@@ -48,3 +48,4 @@ jobs:
           FLAGS="--year $YEAR"
           if [ "$DRY" = "true" ]; then FLAGS="$FLAGS --dry-run"; fi
           python scripts/ingest/sync_cricketdata.py $FLAGS
+# Trigger re-parse
