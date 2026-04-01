@@ -1,26 +1,71 @@
+@import url('https://fonts.googleapis.com/css2?family=Fira+Code:wght@400;500;600;700&family=Fira+Sans:wght@300;400;500;600;700&display=swap');
 @import "tailwindcss";
 
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
+  /* Surface */
+  --bg:          #09090b;
+  --surface:     #111116;
+  --card:        #16161d;
+  --card-hover:  #1c1c26;
+  --border:      #23232f;
+  --border-subtle: #1a1a24;
+
+  /* Text */
+  --text-primary:  #f1f5f9;
+  --text-muted:    #64748b;
+  --text-dim:      #374151;
+
+  /* Brand */
+  --blue:        #3b82f6;
+  --blue-glow:   rgba(59, 130, 246, 0.15);
+  --blue-dim:    rgba(59, 130, 246, 0.08);
+  --orange:      #f97316;
+  --orange-glow: rgba(249, 115, 22, 0.12);
+  --green:       #22c55e;
+  --red:         #ef4444;
 }
 
-@theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
-}
-
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
-}
+* { box-sizing: border-box; }
 
 body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  background: var(--bg);
+  color: var(--text-primary);
+  font-family: 'Fira Sans', sans-serif;
+  font-size: 14px;
+  line-height: 1.6;
+  -webkit-font-smoothing: antialiased;
+}
+
+/* Scrollbar */
+::-webkit-scrollbar { width: 4px; }
+::-webkit-scrollbar-track { background: var(--bg); }
+::-webkit-scrollbar-thumb { background: var(--border); border-radius: 2px; }
+
+/* Glow utility */
+.glow-blue { box-shadow: 0 0 0 1px var(--border), 0 0 20px var(--blue-glow); }
+.glow-orange { box-shadow: 0 0 0 1px var(--border), 0 0 20px var(--orange-glow); }
+
+/* Sidebar nav link */
+.nav-link {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 9px 10px;
+  border-radius: 6px;
+  color: var(--text-muted);
+  text-decoration: none;
+  font-size: 13px;
+  font-weight: 500;
+  margin-bottom: 2px;
+  transition: background 0.15s, color 0.15s;
+}
+.nav-link:hover {
+  background: var(--card);
+  color: var(--text-primary);
+}
+
+/* Match card hover */
+.match-card:hover {
+  border-color: var(--border) !important;
+  background: var(--card-hover) !important;
 }

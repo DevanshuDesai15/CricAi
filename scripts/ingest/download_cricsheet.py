@@ -36,10 +36,12 @@ def extract_zip(zip_path: Path, extract_to: Path) -> None:
     print(f"Extracted {zip_path.name} -> {extract_to}")
 
 if __name__ == "__main__":
+    import sys
+    force = "--force" in sys.argv
     for filename, url in DOWNLOADS.items():
         dest = DATA_DIR / filename
-        if dest.exists():
-            print(f"Skipping {filename} (already downloaded)")
+        if dest.exists() and not force:
+            print(f"Skipping {filename} (already downloaded, use --force to refresh)")
             continue
         download(dest=dest, url=url)
         if filename.endswith(".zip"):

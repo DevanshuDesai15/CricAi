@@ -6,6 +6,7 @@ Usage: python seed_players.py
 Requires: NEXT_PUBLIC_SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY in .env.local (project root)
 """
 import os
+import time
 import pandas as pd
 from pathlib import Path
 from dotenv import load_dotenv
@@ -17,10 +18,9 @@ SUPABASE_URL = os.environ["NEXT_PUBLIC_SUPABASE_URL"]
 SUPABASE_KEY = os.environ["SUPABASE_SERVICE_ROLE_KEY"]
 DATA_DIR = Path(__file__).parent.parent / "data"
 
-BATCH_SIZE = 500
+BATCH_SIZE = 200  # smaller batches = fewer bytes per request = less SSL churn
 
 def build_player_row(row: pd.Series) -> dict:
-    """Build a player row from a people.csv record."""
     return {
         "player_id":     row["identifier"],
         "cricsheet_key": row["identifier"],
@@ -28,8 +28,18 @@ def build_player_row(row: pd.Series) -> dict:
         "full_name":     row["unique_name"] if pd.notna(row.get("unique_name", float("nan"))) else None,
     }
 
+def upsert_with_retry(supabase: Client, batch: list, attempt: int = 1) -> None:
+    try:
+        supabase.table("players").upsert(batch, on_conflict="player_id").execute()
+    except Exception as e:
+        if attempt >= 4:
+            raise
+        wait = 2 ** attempt  # 2s, 4s, 8s
+        print(f"    Retrying after SSL error (attempt {attempt}/3, waiting {wait}s): {e}")
+        time.sleep(wait)
+        upsert_with_retry(supabase, batch, attempt + 1)
+
 def seed(supabase: Client) -> None:
-    """Load players from people.csv and upsert to Supabase."""
     df = pd.read_csv(DATA_DIR / "people.csv")
     print(f"Loaded {len(df)} players from people.csv")
 
@@ -37,7 +47,7 @@ def seed(supabase: Client) -> None:
 
     for i in range(0, len(rows), BATCH_SIZE):
         batch = rows[i : i + BATCH_SIZE]
-        supabase.table("players").upsert(batch, on_conflict="player_id").execute()
+        upsert_with_retry(supabase, batch)
         print(f"  Upserted players {i + 1}–{min(i + BATCH_SIZE, len(rows))}")
 
     print("Players seeded.")

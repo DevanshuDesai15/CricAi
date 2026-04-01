@@ -30,14 +30,27 @@ export async function listRecentMatches(league = 'ipl', limit = 20): Promise<Mat
   return data ?? []
 }
 
-export async function getIPLStandings(season = '2025'): Promise<TeamStanding[]> {
+export async function getLatestIPLSeason(): Promise<string> {
   const supabase = await createServerSupabaseClient()
+  const { data } = await supabase
+    .from('matches')
+    .select('season')
+    .eq('league_id', 'ipl')
+    .order('match_date', { ascending: false })
+    .limit(1)
+    .single()
+  return data?.season ?? '2025'
+}
+
+export async function getIPLStandings(season?: string): Promise<TeamStanding[]> {
+  const supabase = await createServerSupabaseClient()
+  const resolvedSeason = season ?? await getLatestIPLSeason()
 
   const { data, error } = await supabase
     .from('matches')
     .select('team1_id, team2_id, winner')
     .eq('league_id', 'ipl')
-    .eq('season', season)
+    .eq('season', resolvedSeason)
     .not('winner', 'is', null)
 
   if (error) throw error

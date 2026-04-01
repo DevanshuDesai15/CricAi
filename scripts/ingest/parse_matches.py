@@ -73,32 +73,74 @@ def get_phase(ball_number: float) -> str:
 def slugify(s: str) -> str:
     return re.sub(r"[^a-z0-9]+", "_", s.lower()).strip("_")
 
+def parse_info_file(info_path: Path) -> dict:
+    """
+    Parses a Cricsheet _info.csv file and returns a dict of match metadata.
+    Rows have variable columns: info,key,value  OR  info,player,team,player_name
+    We read raw lines to avoid pandas column-count issues.
+    """
+    meta: dict = {}
+    if not info_path.exists():
+        return meta
+    try:
+        with open(info_path, "r", encoding="utf-8") as f:
+            for line in f:
+                parts = line.strip().split(",")
+                if len(parts) >= 3 and parts[0] == "info":
+                    key = parts[1].strip()
+                    val = parts[2].strip()
+                    # Only keep first occurrence (e.g. team appears twice)
+                    if key not in meta:
+                        meta[key] = val
+    except Exception:
+        pass
+    return meta
+
 def parse_match_file(csv_path: Path) -> Optional[dict[str, Any]]:
     df = pd.read_csv(csv_path, low_memory=False)
     if df.empty:
         return None
 
+    # Parse companion _info.csv for match outcome
+    info_path = csv_path.parent / f"{csv_path.stem}_info.csv"
+    info = parse_info_file(info_path)
+
     first = df.iloc[0]
     match_id   = str(csv_path.stem)
     season     = str(first.get("season", ""))
     match_date = str(first.get("start_date", ""))
-    venue_name = str(first.get("venue", "Unknown"))
+    venue_name = str(first.get("venue", info.get("venue", "Unknown")))
     venue_id   = slugify(venue_name)
 
     teams_list = df["batting_team"].dropna().unique().tolist()
     team1 = teams_list[0] if len(teams_list) > 0 else None
     team2 = teams_list[1] if len(teams_list) > 1 else None
 
+    # Resolve winner: info file has the team name, we slugify to match team_id
+    raw_winner = info.get("winner", "")
+    winner_id  = slugify(raw_winner) if raw_winner else None
+
+    toss_winner_raw = info.get("toss_winner", "")
+    toss_winner_id  = slugify(toss_winner_raw) if toss_winner_raw else None
+
+    # Handle no-result / tie
+    outcome = info.get("outcome", "")
+    result = "no result" if outcome == "no result" else ("tie" if outcome == "tie" else "normal")
+
     match_row = {
-        "match_id":   match_id,
-        "sport_id":   "cricket",
-        "league_id":  "ipl",
-        "season":     season,
-        "match_date": match_date,
-        "venue_id":   venue_id,
-        "team1_id":   slugify(team1) if team1 else None,
-        "team2_id":   slugify(team2) if team2 else None,
-        "match_type": "T20",
+        "match_id":     match_id,
+        "sport_id":     "cricket",
+        "league_id":    "ipl",
+        "season":       season,
+        "match_date":   match_date,
+        "venue_id":     venue_id,
+        "team1_id":     slugify(team1) if team1 else None,
+        "team2_id":     slugify(team2) if team2 else None,
+        "winner":       winner_id,
+        "toss_winner":  toss_winner_id,
+        "toss_decision": info.get("toss_decision") or None,
+        "result":       result,
+        "match_type":   "T20",
     }
 
     venue_row = {"venue_id": venue_id, "name": venue_name}

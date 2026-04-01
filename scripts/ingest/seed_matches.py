@@ -25,10 +25,22 @@ SUPABASE_URL = os.environ["NEXT_PUBLIC_SUPABASE_URL"]
 SUPABASE_KEY = os.environ["SUPABASE_SERVICE_ROLE_KEY"]
 DATA_DIR     = Path(__file__).parent.parent / "data" / "ipl"
 
-def seed(limit=None) -> None:
+def seed(limit=None, season=None) -> None:
     supabase = create_client(SUPABASE_URL, SUPABASE_KEY)
     # Only process match data files, not _info files
     files = sorted([f for f in DATA_DIR.glob("*.csv") if "_info" not in f.name])
+
+    if season:
+        import pandas as pd
+        def _file_season(p):
+            try:
+                row = pd.read_csv(p, nrows=1)
+                return str(row.iloc[0].get("season", ""))
+            except Exception:
+                return ""
+        files = [f for f in files if _file_season(f) == season]
+        print(f"Filtered to {len(files)} files for season {season}")
+
     if limit:
         files = files[:limit]
 
@@ -48,7 +60,20 @@ def seed(limit=None) -> None:
 
             supabase.table("matches").upsert(parsed["match"], on_conflict="match_id").execute()
 
+            # Auto-insert any players not yet in the players table.
+            # Cricsheet match files use player names (e.g. "B Kumar") as identifiers,
+            # which may not match the people.csv slugs seeded earlier.
             stats = parsed["player_stats"]
+            missing_players = [
+                {"player_id": s["player_id"], "name": s["player_id"]}
+                for s in stats
+                if s.get("player_id")
+            ]
+            if missing_players:
+                supabase.table("players").upsert(
+                    missing_players, on_conflict="player_id"
+                ).execute()
+
             for i in range(0, len(stats), 100):
                 batch = stats[i : i + 100]
                 supabase.table("player_match_stats").upsert(
@@ -66,5 +91,6 @@ def seed(limit=None) -> None:
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument("--limit", type=int, default=None)
+    parser.add_argument("--season", type=str, default=None, help="Only seed matches for this season (e.g. 2025)")
     args = parser.parse_args()
-    seed(args.limit)
+    seed(args.limit, args.season)

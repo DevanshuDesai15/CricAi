@@ -144,12 +144,20 @@ def parse_match(match_info: dict, scorecard: dict) -> dict:
         bowling_rows = innings.get("bowling", [])
 
         for pos, row in enumerate(batting_rows, start=1):
-            raw_name  = row.get("batsman", "")
+            batsman_field = row.get("batsman", "")
+            raw_name = batsman_field.get("name", "") if isinstance(batsman_field, dict) else batsman_field
             pid       = slugify(raw_name)
             if not pid:
                 continue
 
-            dismissed, dtype, fielder_pid = _parse_dismissal(row.get("dismissal", "not out"))
+            # API returns short 'dismissal' type and full 'dismissal-text'; use the full text
+            dismissal_text = row.get("dismissal-text") or row.get("dismissal") or "not out"
+            dismissed, dtype, fielder_pid = _parse_dismissal(dismissal_text)
+
+            # If a catcher dict is present, prefer it over parsing the dismissal text
+            catcher_field = row.get("catcher")
+            if catcher_field and isinstance(catcher_field, dict):
+                fielder_pid = slugify(catcher_field.get("name", ""))
 
             player_team[pid] = team_id
             batting_order.setdefault(pid, pos)
@@ -174,7 +182,8 @@ def parse_match(match_info: dict, scorecard: dict) -> dict:
                     f["run_outs_direct"] += 1
 
         for row in bowling_rows:
-            raw_name = row.get("bowler", "")
+            bowler_field = row.get("bowler", "")
+            raw_name = bowler_field.get("name", "") if isinstance(bowler_field, dict) else bowler_field
             pid      = slugify(raw_name)
             if not pid:
                 continue
@@ -197,9 +206,10 @@ def parse_match(match_info: dict, scorecard: dict) -> dict:
     # Back-fill dismissal_types for bowlers (needed for lbw/bowled bonus)
     for innings in scorecard.get("scorecard", []):
         for row in innings.get("batting", []):
-            _, dtype, _ = _parse_dismissal(row.get("dismissal", "not out"))
+            dismissal_text = row.get("dismissal-text") or row.get("dismissal") or "not out"
+            _, dtype, _ = _parse_dismissal(dismissal_text)
             if dtype in ("lbw", "bowled"):
-                s = row.get("dismissal", "")
+                s = dismissal_text
                 bm = re.search(r" b (.+)$", s, re.IGNORECASE)
                 if bm:
                     bowler_pid = slugify(bm.group(1).strip())
