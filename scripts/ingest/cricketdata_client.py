@@ -33,8 +33,8 @@ class CricketDataClient:
         """
         Search for the IPL series matching `year` and return its GUID.
         The API often returns multiple duplicate series for the same year,
-        most of which are empty. This method checks each candidate and
-        picks the one with the most matches.
+        most of which are empty. We use the `matches` count from the series
+        list response to pick the one with actual data — no extra API calls.
         Raises RuntimeError if no matching series is found.
         """
         results = self._get("series", params={"search": "Indian Premier League"})
@@ -46,23 +46,10 @@ class CricketDataClient:
         if not candidates:
             raise RuntimeError(f"No IPL series found for year {year}. Available: {[s.get('name') for s in results]}")
 
-        # If only one candidate, return it directly
-        if len(candidates) == 1:
-            return candidates[0]["id"]
-
-        # Multiple duplicates — pick the one with the most matches
-        best_id, best_count = candidates[0]["id"], 0
-        for s in candidates:
-            try:
-                data = self._get("series_info", params={"id": s["id"]})
-                match_count = len(data.get("matchList", []))
-                if match_count > best_count:
-                    best_count = match_count
-                    best_id = s["id"]
-            except Exception:
-                continue
-
-        return best_id
+        # Pick the candidate with the most matches (uses the `matches` field
+        # already present in the series list response — no extra API calls)
+        best = max(candidates, key=lambda s: int(s.get("matches", 0) or 0))
+        return best["id"]
 
     def get_series_matches(self, series_id: str) -> list[dict]:
         """
