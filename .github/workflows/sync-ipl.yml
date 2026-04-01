@@ -1,0 +1,50 @@
+name: Sync IPL 2026 Data
+
+on:
+  # 11:30 PM IST = 18:00 UTC
+  schedule:
+    - cron: "0 18 * * *"
+  # Allow manual trigger from GitHub Actions UI
+  workflow_dispatch:
+    inputs:
+      year:
+        description: "IPL season year to sync"
+        required: false
+        default: "2026"
+      dry_run:
+        description: "Dry run (no DB writes)"
+        required: false
+        default: "false"
+        type: choice
+        options: ["true", "false"]
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.9"
+          cache: "pip"
+          cache-dependency-path: "scripts/requirements.txt"
+
+      - name: Install dependencies
+        run: pip install -r scripts/requirements.txt
+
+      - name: Run IPL sync
+        env:
+          CRICKETDATA_API_KEY:        ${{ secrets.CRICKETDATA_API_KEY }}
+          NEXT_PUBLIC_SUPABASE_URL:   ${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}
+          SUPABASE_SERVICE_ROLE_KEY:  ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+        run: |
+          YEAR=${{ github.event.inputs.year || '2026' }}
+          DRY=${{ github.event.inputs.dry_run || 'false' }}
+          FLAGS="--year $YEAR"
+          if [ "$DRY" = "true" ]; then FLAGS="$FLAGS --dry-run"; fi
+          python scripts/ingest/sync_cricketdata.py $FLAGS
