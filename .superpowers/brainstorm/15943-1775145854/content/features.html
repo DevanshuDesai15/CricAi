@@ -1,0 +1,120 @@
+<h2>Section 1 — Feature Vector</h2>
+<p class="subtitle">For each player in the upcoming match, we build this row of inputs for the model</p>
+
+<div style="margin-top: 20px; display: flex; flex-direction: column; gap: 16px;">
+
+  <!-- Recent Form group -->
+  <div style="background: #111120; border: 1px solid #1e1e32; border-radius: 10px; overflow: hidden;">
+    <div style="background: #1a1a2e; border-bottom: 1px solid #1e1e32; padding: 8px 16px; display: flex; align-items: center; gap: 8px;">
+      <div style="width: 8px; height: 8px; border-radius: 50%; background: #6366f1;"></div>
+      <span style="font-size: 11px; font-weight: 700; color: #818cf8; letter-spacing: 0.08em; font-family: 'Fira Code', monospace;">FROM player_recent_form</span>
+      <span style="font-size: 10px; color: #475569; margin-left: 8px;">How has this player performed in their last 5 matches?</span>
+    </div>
+    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 0;">
+      <div style="padding: 10px 16px; border-right: 1px solid #1e1e32; border-bottom: 1px solid #1e1e32;">
+        <div style="font-size: 11px; color: #818cf8; font-family: 'Fira Code', monospace; font-weight: 600;">avg_fantasy_points_last5</div>
+        <div style="font-size: 10px; color: #475569; margin-top: 2px;">Average fantasy pts in last 5 games — strongest signal</div>
+      </div>
+      <div style="padding: 10px 16px; border-bottom: 1px solid #1e1e32;">
+        <div style="font-size: 11px; color: #818cf8; font-family: 'Fira Code', monospace; font-weight: 600;">avg_runs_last5</div>
+        <div style="font-size: 10px; color: #475569; margin-top: 2px;">Running average of runs scored</div>
+      </div>
+      <div style="padding: 10px 16px; border-right: 1px solid #1e1e32;">
+        <div style="font-size: 11px; color: #818cf8; font-family: 'Fira Code', monospace; font-weight: 600;">avg_wickets_last5</div>
+        <div style="font-size: 10px; color: #475569; margin-top: 2px;">Running average of wickets taken</div>
+      </div>
+      <div style="padding: 10px 16px;">
+        <div style="font-size: 11px; color: #818cf8; font-family: 'Fira Code', monospace; font-weight: 600;">avg_economy_last5</div>
+        <div style="font-size: 10px; color: #475569; margin-top: 2px;">Recent economy rate (lower = better for bowlers)</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Venue Stats group -->
+  <div style="background: #111120; border: 1px solid #1e1e32; border-radius: 10px; overflow: hidden;">
+    <div style="background: #1a1a2e; border-bottom: 1px solid #1e1e32; padding: 8px 16px; display: flex; align-items: center; gap: 8px;">
+      <div style="width: 8px; height: 8px; border-radius: 50%; background: #f97316;"></div>
+      <span style="font-size: 11px; font-weight: 700; color: #fb923c; letter-spacing: 0.08em; font-family: 'Fira Code', monospace;">FROM player_venue_stats</span>
+      <span style="font-size: 10px; color: #475569; margin-left: 8px;">How does this player perform at tonight's ground?</span>
+    </div>
+    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 0;">
+      <div style="padding: 10px 16px; border-right: 1px solid #1e1e32; border-bottom: 1px solid #1e1e32;">
+        <div style="font-size: 11px; color: #fb923c; font-family: 'Fira Code', monospace; font-weight: 600;">avg_fantasy_points_at_venue</div>
+        <div style="font-size: 10px; color: #475569; margin-top: 2px;">Career fantasy avg at this specific ground</div>
+      </div>
+      <div style="padding: 10px 16px; border-bottom: 1px solid #1e1e32;">
+        <div style="font-size: 11px; color: #fb923c; font-family: 'Fira Code', monospace; font-weight: 600;">matches_at_venue</div>
+        <div style="font-size: 10px; color: #475569; margin-top: 2px;">Confidence weight — 1 match vs 20 matches is very different</div>
+      </div>
+      <div style="padding: 10px 16px; border-right: 1px solid #1e1e32;">
+        <div style="font-size: 11px; color: #fb923c; font-family: 'Fira Code', monospace; font-weight: 600;">avg_runs_at_venue</div>
+        <div style="font-size: 10px; color: #475569; margin-top: 2px;">Batting avg at this ground (e.g. Rohit at Wankhede)</div>
+      </div>
+      <div style="padding: 10px 16px;">
+        <div style="font-size: 11px; color: #fb923c; font-family: 'Fira Code', monospace; font-weight: 600;">avg_wickets_at_venue</div>
+        <div style="font-size: 10px; color: #475569; margin-top: 2px;">Bowling avg at this ground</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- H2H group -->
+  <div style="background: #111120; border: 1px solid #1e1e32; border-radius: 10px; overflow: hidden;">
+    <div style="background: #1a1a2e; border-bottom: 1px solid #1e1e32; padding: 8px 16px; display: flex; align-items: center; gap: 8px;">
+      <div style="width: 8px; height: 8px; border-radius: 50%; background: #10b981;"></div>
+      <span style="font-size: 11px; font-weight: 700; color: #10b981; letter-spacing: 0.08em; font-family: 'Fira Code', monospace;">FROM head_to_head_stats</span>
+      <span style="font-size: 10px; color: #475569; margin-left: 8px;">How does this player perform against tonight's opposition?</span>
+    </div>
+    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 0;">
+      <div style="padding: 10px 16px; border-right: 1px solid #1e1e32; border-bottom: 1px solid #1e1e32;">
+        <div style="font-size: 11px; color: #10b981; font-family: 'Fira Code', monospace; font-weight: 600;">avg_fantasy_points_vs_opp</div>
+        <div style="font-size: 10px; color: #475569; margin-top: 2px;">Career fantasy avg against this specific team</div>
+      </div>
+      <div style="padding: 10px 16px; border-bottom: 1px solid #1e1e32;">
+        <div style="font-size: 11px; color: #10b981; font-family: 'Fira Code', monospace; font-weight: 600;">matches_vs_opposition</div>
+        <div style="font-size: 10px; color: #475569; margin-top: 2px;">Confidence weight for h2h stat</div>
+      </div>
+      <div style="padding: 10px 16px; border-right: 1px solid #1e1e32;">
+        <div style="font-size: 11px; color: #10b981; font-family: 'Fira Code', monospace; font-weight: 600;">avg_runs_vs_opposition</div>
+        <div style="font-size: 10px; color: #475569; margin-top: 2px;">e.g. Kohli averages 55 runs vs MI bowling</div>
+      </div>
+      <div style="padding: 10px 16px;">
+        <div style="font-size: 11px; color: #10b981; font-family: 'Fira Code', monospace; font-weight: 600;">avg_wickets_vs_opposition</div>
+        <div style="font-size: 10px; color: #475569; margin-top: 2px;">e.g. Bumrah takes 2 wickets per match vs RCB</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Categorical group -->
+  <div style="background: #111120; border: 1px solid #1e1e32; border-radius: 10px; overflow: hidden;">
+    <div style="background: #1a1a2e; border-bottom: 1px solid #1e1e32; padding: 8px 16px; display: flex; align-items: center; gap: 8px;">
+      <div style="width: 8px; height: 8px; border-radius: 50%; background: #f59e0b;"></div>
+      <span style="font-size: 11px; font-weight: 700; color: #f59e0b; letter-spacing: 0.08em; font-family: 'Fira Code', monospace;">MATCH CONTEXT</span>
+      <span style="font-size: 10px; color: #475569; margin-left: 8px;">Who is this player and what's the match situation?</span>
+    </div>
+    <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 0;">
+      <div style="padding: 10px 16px; border-right: 1px solid #1e1e32;">
+        <div style="font-size: 11px; color: #f59e0b; font-family: 'Fira Code', monospace; font-weight: 600;">role</div>
+        <div style="font-size: 10px; color: #475569; margin-top: 2px;">BAT / BOWL / AR / WK</div>
+      </div>
+      <div style="padding: 10px 16px; border-right: 1px solid #1e1e32;">
+        <div style="font-size: 11px; color: #f59e0b; font-family: 'Fira Code', monospace; font-weight: 600;">batting_position</div>
+        <div style="font-size: 10px; color: #475569; margin-top: 2px;">1–11 (openers score more)</div>
+      </div>
+      <div style="padding: 10px 16px;">
+        <div style="font-size: 11px; color: #f59e0b; font-family: 'Fira Code', monospace; font-weight: 600;">is_home</div>
+        <div style="font-size: 10px; color: #475569; margin-top: 2px;">Playing at home ground?</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Target -->
+  <div style="background: #0f1f0f; border: 1px solid #22c55e; border-radius: 10px; padding: 12px 16px; display: flex; align-items: center; gap: 16px;">
+    <div style="width: 8px; height: 8px; border-radius: 50%; background: #22c55e; flex-shrink: 0;"></div>
+    <div>
+      <div style="font-size: 11px; color: #22c55e; font-family: 'Fira Code', monospace; font-weight: 700; letter-spacing: 0.08em;">TARGET VARIABLE (what the model predicts)</div>
+      <div style="font-size: 13px; color: #86efac; font-family: 'Fira Code', monospace; font-weight: 700; margin-top: 4px;">fantasy_points</div>
+      <div style="font-size: 10px; color: #475569; margin-top: 2px;">Actual fantasy points scored in that match — already in player_match_stats for 2007–2024</div>
+    </div>
+  </div>
+
+</div>

@@ -1,0 +1,5 @@
+{"type":"server-started","port":64988,"host":"127.0.0.1","url_host":"localhost","url":"http://localhost:64988","screen_dir":"/Users/devanshudesai/Developer/personalWork/cricAi/.superpowers/brainstorm/15943-1775145854/content","state_dir":"/Users/devanshudesai/Developer/personalWork/cricAi/.superpowers/brainstorm/15943-1775145854/state"}
+{"type":"screen-added","file":"/Users/devanshudesai/Developer/personalWork/cricAi/.superpowers/brainstorm/15943-1775145854/content/ml-pipeline.html"}
+{"type":"screen-added","file":"/Users/devanshudesai/Developer/personalWork/cricAi/.superpowers/brainstorm/15943-1775145854/content/ml-pipeline-v2.html"}
+{"type":"screen-added","file":"/Users/devanshudesai/Developer/personalWork/cricAi/.superpowers/brainstorm/15943-1775145854/content/features.html"}
+{"type":"server-stopped","reason":"idle timeout"}

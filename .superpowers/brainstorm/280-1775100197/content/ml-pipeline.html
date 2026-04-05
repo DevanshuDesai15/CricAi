@@ -1,0 +1,105 @@
+<h2>Phase 3 — ML Pipeline Architecture</h2>
+<p class="subtitle">How data flows from your Supabase DB to fantasy predictions on the dashboard</p>
+
+<div style="font-family: 'Fira Code', monospace; margin-top: 24px;">
+
+  <!-- Row 1: Data Sources -->
+  <div style="display: flex; gap: 12px; justify-content: center; margin-bottom: 8px;">
+    <div style="background: #1e1e32; border: 1px solid #3b82f6; border-radius: 8px; padding: 10px 18px; text-align: center; font-size: 12px; color: #818cf8;">
+      <div style="font-size: 10px; color: #475569; margin-bottom: 4px;">SUPABASE VIEWS</div>
+      player_recent_form
+    </div>
+    <div style="background: #1e1e32; border: 1px solid #3b82f6; border-radius: 8px; padding: 10px 18px; text-align: center; font-size: 12px; color: #818cf8;">
+      <div style="font-size: 10px; color: #475569; margin-bottom: 4px;">SUPABASE VIEWS</div>
+      player_venue_stats
+    </div>
+    <div style="background: #1e1e32; border: 1px solid #3b82f6; border-radius: 8px; padding: 10px 18px; text-align: center; font-size: 12px; color: #818cf8;">
+      <div style="font-size: 10px; color: #475569; margin-bottom: 4px;">SUPABASE VIEWS</div>
+      head_to_head_stats
+    </div>
+  </div>
+
+  <!-- Arrow -->
+  <div style="text-align: center; color: #475569; font-size: 18px; margin: 4px 0;">↓</div>
+
+  <!-- Row 2: Feature Engineering -->
+  <div style="display: flex; justify-content: center; margin-bottom: 8px;">
+    <div style="background: #1a2035; border: 1px solid #f97316; border-radius: 8px; padding: 12px 32px; text-align: center;">
+      <div style="font-size: 10px; color: #f97316; margin-bottom: 4px;">PYTHON SCRIPT</div>
+      <div style="font-size: 13px; color: #fb923c; font-weight: 600;">feature_engineering.py</div>
+      <div style="font-size: 10px; color: #475569; margin-top: 4px;">Joins all 3 views → builds feature vector per player per match</div>
+    </div>
+  </div>
+
+  <!-- Arrow -->
+  <div style="text-align: center; color: #475569; font-size: 18px; margin: 4px 0;">↓</div>
+
+  <!-- Row 3: Split -->
+  <div style="display: flex; gap: 12px; justify-content: center; margin-bottom: 8px;">
+    <div style="background: #1a2035; border: 1px solid #475569; border-radius: 8px; padding: 10px 20px; text-align: center;">
+      <div style="font-size: 10px; color: #475569; margin-bottom: 4px;">TRAINING DATA</div>
+      <div style="font-size: 12px; color: #94a3b8;">IPL 2007 – 2024</div>
+      <div style="font-size: 10px; color: #475569;">~1,000 matches</div>
+    </div>
+    <div style="display: flex; align-items: center; color: #475569; font-size: 18px;">→</div>
+    <div style="background: #1a2035; border: 1px solid #10b981; border-radius: 8px; padding: 10px 20px; text-align: center;">
+      <div style="font-size: 10px; color: #10b981; margin-bottom: 4px;">TEST DATA (holdout)</div>
+      <div style="font-size: 12px; color: #94a3b8;">IPL 2025 season</div>
+      <div style="font-size: 10px; color: #475569;">Never seen by model</div>
+    </div>
+  </div>
+
+  <!-- Arrow -->
+  <div style="text-align: center; color: #475569; font-size: 18px; margin: 4px 0;">↓</div>
+
+  <!-- Row 4: Train -->
+  <div style="display: flex; justify-content: center; margin-bottom: 8px;">
+    <div style="background: #1a2035; border: 1px solid #f97316; border-radius: 8px; padding: 12px 32px; text-align: center;">
+      <div style="font-size: 10px; color: #f97316; margin-bottom: 4px;">PYTHON SCRIPT</div>
+      <div style="font-size: 13px; color: #fb923c; font-weight: 600;">train.py</div>
+      <div style="font-size: 10px; color: #475569; margin-top: 4px;">XGBoost regression → fantasy_model.pkl  ·  Logs MAE + RMSE</div>
+    </div>
+  </div>
+
+  <!-- Arrow -->
+  <div style="text-align: center; color: #475569; font-size: 18px; margin: 4px 0;">↓</div>
+
+  <!-- Row 5: Predict -->
+  <div style="display: flex; justify-content: center; margin-bottom: 8px;">
+    <div style="background: #1a2035; border: 1px solid #f97316; border-radius: 8px; padding: 12px 32px; text-align: center;">
+      <div style="font-size: 10px; color: #f97316; margin-bottom: 4px;">PYTHON SCRIPT  ·  runs daily via GitHub Actions</div>
+      <div style="font-size: 13px; color: #fb923c; font-weight: 600;">predict.py</div>
+      <div style="font-size: 10px; color: #475569; margin-top: 4px;">Given next match context → predicted fantasy pts per player → upserts to Supabase</div>
+    </div>
+  </div>
+
+  <!-- Arrow -->
+  <div style="text-align: center; color: #475569; font-size: 18px; margin: 4px 0;">↓</div>
+
+  <!-- Row 6: Supabase table -->
+  <div style="display: flex; justify-content: center; margin-bottom: 8px;">
+    <div style="background: #1e1e32; border: 1px solid #3b82f6; border-radius: 8px; padding: 10px 28px; text-align: center;">
+      <div style="font-size: 10px; color: #475569; margin-bottom: 4px;">NEW SUPABASE TABLE</div>
+      <div style="font-size: 13px; color: #818cf8; font-weight: 600;">match_predictions</div>
+      <div style="font-size: 10px; color: #475569; margin-top: 2px;">player_id · match_id · predicted_pts · captain_rank</div>
+    </div>
+  </div>
+
+  <!-- Arrow -->
+  <div style="text-align: center; color: #475569; font-size: 18px; margin: 4px 0;">↓</div>
+
+  <!-- Row 7: API + Frontend -->
+  <div style="display: flex; gap: 12px; justify-content: center;">
+    <div style="background: #1e1e32; border: 1px solid #6366f1; border-radius: 8px; padding: 10px 20px; text-align: center;">
+      <div style="font-size: 10px; color: #475569; margin-bottom: 4px;">NEXT.JS API ROUTE</div>
+      <div style="font-size: 12px; color: #818cf8;">/api/predictions/match</div>
+    </div>
+    <div style="display: flex; align-items: center; color: #475569; font-size: 18px;">→</div>
+    <div style="background: #1e1e32; border: 1px solid #6366f1; border-radius: 8px; padding: 10px 20px; text-align: center;">
+      <div style="font-size: 10px; color: #475569; margin-bottom: 4px;">DASHBOARD</div>
+      <div style="font-size: 12px; color: #818cf8;">/predictions page</div>
+      <div style="font-size: 10px; color: #475569; margin-top: 2px;">Ranked players · Captain pick · Transfer advice</div>
+    </div>
+  </div>
+
+</div>

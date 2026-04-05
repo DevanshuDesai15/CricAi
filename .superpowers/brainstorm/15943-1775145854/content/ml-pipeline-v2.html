@@ -1,0 +1,103 @@
+<h2>Phase 3 — ML Pipeline Architecture</h2>
+<p class="subtitle">Train on history · Evaluate on 2025 · Predict for IPL 2026 (live)</p>
+
+<div style="font-family: 'Fira Code', monospace; margin-top: 24px;">
+
+  <!-- Data Sources -->
+  <div style="display: flex; gap: 12px; justify-content: center; margin-bottom: 8px;">
+    <div style="background: #1e1e32; border: 1px solid #3b82f6; border-radius: 8px; padding: 10px 16px; text-align: center; font-size: 12px; color: #818cf8;">
+      <div style="font-size: 10px; color: #475569; margin-bottom: 4px;">SUPABASE VIEW</div>
+      player_recent_form
+    </div>
+    <div style="background: #1e1e32; border: 1px solid #3b82f6; border-radius: 8px; padding: 10px 16px; text-align: center; font-size: 12px; color: #818cf8;">
+      <div style="font-size: 10px; color: #475569; margin-bottom: 4px;">SUPABASE VIEW</div>
+      player_venue_stats
+    </div>
+    <div style="background: #1e1e32; border: 1px solid #3b82f6; border-radius: 8px; padding: 10px 16px; text-align: center; font-size: 12px; color: #818cf8;">
+      <div style="font-size: 10px; color: #475569; margin-bottom: 4px;">SUPABASE VIEW</div>
+      head_to_head_stats
+    </div>
+  </div>
+
+  <div style="text-align: center; color: #475569; font-size: 20px; margin: 2px 0;">↓</div>
+
+  <!-- Feature Engineering -->
+  <div style="display: flex; justify-content: center; margin-bottom: 8px;">
+    <div style="background: #1a1a2e; border: 1px solid #f97316; border-radius: 8px; padding: 12px 36px; text-align: center;">
+      <div style="font-size: 10px; color: #f97316; margin-bottom: 4px;">PYTHON · scripts/ml/</div>
+      <div style="font-size: 14px; color: #fb923c; font-weight: 700;">feature_engineering.py</div>
+      <div style="font-size: 10px; color: #64748b; margin-top: 4px;">Joins 3 views → 12-feature vector per player per match</div>
+    </div>
+  </div>
+
+  <div style="text-align: center; color: #475569; font-size: 20px; margin: 2px 0;">↓</div>
+
+  <!-- Train/Test split — explained clearly -->
+  <div style="display: flex; gap: 0; justify-content: center; margin-bottom: 8px; align-items: stretch;">
+    <div style="background: #1a1a2e; border: 1px solid #475569; border-radius: 8px 0 0 8px; padding: 12px 24px; text-align: center; border-right: none;">
+      <div style="font-size: 10px; color: #94a3b8; font-weight: 700; margin-bottom: 4px;">STEP 1 · TRAIN</div>
+      <div style="font-size: 13px; color: #f1f5f9; font-weight: 600;">IPL 2007 – 2024</div>
+      <div style="font-size: 10px; color: #475569; margin-top: 4px;">Model learns from ~1,000 matches</div>
+    </div>
+    <div style="background: #1a1a2e; border: 1px solid #10b981; border-radius: 0; padding: 12px 24px; text-align: center; border-left: 1px dashed #334155; border-right: none;">
+      <div style="font-size: 10px; color: #10b981; font-weight: 700; margin-bottom: 4px;">STEP 2 · EVALUATE</div>
+      <div style="font-size: 13px; color: #f1f5f9; font-weight: 600;">IPL 2025</div>
+      <div style="font-size: 10px; color: #475569; margin-top: 4px;">"Would it have predicted<br>last season correctly?"<br>Measures MAE + RMSE</div>
+    </div>
+    <div style="background: #1a2e1a; border: 1px solid #22c55e; border-radius: 0 8px 8px 0; padding: 12px 24px; text-align: center; border-left: 1px dashed #334155;">
+      <div style="font-size: 10px; color: #22c55e; font-weight: 700; margin-bottom: 4px;">STEP 3 · PREDICT ← YOU ARE HERE</div>
+      <div style="font-size: 13px; color: #f1f5f9; font-weight: 600;">IPL 2026 🏏</div>
+      <div style="font-size: 10px; color: #64748b; margin-top: 4px;">Live season · actual<br>predictions users see</div>
+    </div>
+  </div>
+
+  <div style="text-align: center; color: #475569; font-size: 20px; margin: 2px 0;">↓</div>
+
+  <!-- train.py -->
+  <div style="display: flex; justify-content: center; margin-bottom: 8px;">
+    <div style="background: #1a1a2e; border: 1px solid #f97316; border-radius: 8px; padding: 12px 36px; text-align: center;">
+      <div style="font-size: 10px; color: #f97316; margin-bottom: 4px;">PYTHON · scripts/ml/</div>
+      <div style="font-size: 14px; color: #fb923c; font-weight: 700;">train.py</div>
+      <div style="font-size: 10px; color: #64748b; margin-top: 4px;">XGBoost regression → fantasy_model.pkl · prints MAE + RMSE on 2025 holdout</div>
+    </div>
+  </div>
+
+  <div style="text-align: center; color: #475569; font-size: 20px; margin: 2px 0;">↓</div>
+
+  <!-- predict.py -->
+  <div style="display: flex; justify-content: center; margin-bottom: 8px;">
+    <div style="background: #1a1a2e; border: 1px solid #f97316; border-radius: 8px; padding: 12px 36px; text-align: center;">
+      <div style="font-size: 10px; color: #f97316; margin-bottom: 4px;">PYTHON · runs daily after sync-ipl.yml · scripts/ml/</div>
+      <div style="font-size: 14px; color: #fb923c; font-weight: 700;">predict.py</div>
+      <div style="font-size: 10px; color: #64748b; margin-top: 4px;">IPL 2026 next match context → predicted pts per player → upserts to Supabase</div>
+    </div>
+  </div>
+
+  <div style="text-align: center; color: #475569; font-size: 20px; margin: 2px 0;">↓</div>
+
+  <!-- Supabase -->
+  <div style="display: flex; justify-content: center; margin-bottom: 8px;">
+    <div style="background: #1e1e32; border: 1px solid #3b82f6; border-radius: 8px; padding: 10px 32px; text-align: center;">
+      <div style="font-size: 10px; color: #475569; margin-bottom: 4px;">NEW SUPABASE TABLE</div>
+      <div style="font-size: 14px; color: #818cf8; font-weight: 700;">match_predictions</div>
+      <div style="font-size: 10px; color: #475569; margin-top: 2px;">player_id · match_id · predicted_pts · captain_rank · vc_rank</div>
+    </div>
+  </div>
+
+  <div style="text-align: center; color: #475569; font-size: 20px; margin: 2px 0;">↓</div>
+
+  <!-- API + Frontend -->
+  <div style="display: flex; gap: 16px; justify-content: center; align-items: center;">
+    <div style="background: #1e1e32; border: 1px solid #6366f1; border-radius: 8px; padding: 10px 22px; text-align: center;">
+      <div style="font-size: 10px; color: #475569; margin-bottom: 4px;">NEXT.JS</div>
+      <div style="font-size: 12px; color: #818cf8; font-weight: 600;">/api/predictions/match</div>
+    </div>
+    <div style="color: #475569; font-size: 20px;">→</div>
+    <div style="background: #1a2e1a; border: 1px solid #22c55e; border-radius: 8px; padding: 10px 22px; text-align: center;">
+      <div style="font-size: 10px; color: #22c55e; margin-bottom: 4px;">DASHBOARD PAGE</div>
+      <div style="font-size: 12px; color: #86efac; font-weight: 600;">/predictions</div>
+      <div style="font-size: 10px; color: #475569; margin-top: 2px;">IPL 2026 · Ranked players<br>Captain/VC pick · Transfer advice</div>
+    </div>
+  </div>
+
+</div>
