@@ -1,5 +1,15 @@
 import { getIPLStandings, getLatestIPLSeason, listRecentMatches } from '@/lib/queries/matches'
 import { TeamPerformanceChart } from '@/components/TeamPerformanceChart'
+import { 
+  Calendar, 
+  Shield, 
+  Trophy, 
+  Database, 
+  Activity,
+  History,
+  TrendingUp,
+  ChevronRight
+} from 'lucide-react'
 
 // ── Team config ───────────────────────────────────────────────────────────
 
@@ -17,9 +27,27 @@ const TEAM_CONFIG: Record<string, { abbr: string; color: string; secondaryColor:
 }
 
 function getTeamConfig(teamId: string) {
-  const key = Object.keys(TEAM_CONFIG).find(k => teamId.toLowerCase().includes(k.split('_')[0]))
-    ?? teamId
-  return TEAM_CONFIG[key] ?? { abbr: teamId.slice(0, 3).toUpperCase(), color: '#6366f1', secondaryColor: '#f97316' }
+  const tid = teamId.toLowerCase().replace(/[\s_-]+/g, '_')
+  
+  if (TEAM_CONFIG[tid]) return TEAM_CONFIG[tid]
+  
+  const key = Object.keys(TEAM_CONFIG).find(k => {
+    const prefix = k.split('_')[0]
+    return tid.startsWith(prefix) || k.startsWith(tid.split('_')[0])
+  })
+
+  if (key) return TEAM_CONFIG[key]
+  
+  const abbrKey = Object.keys(TEAM_CONFIG).find(k => 
+    TEAM_CONFIG[k].abbr.toLowerCase() === tid
+  )
+  if (abbrKey) return TEAM_CONFIG[abbrKey]
+
+  return { 
+    abbr: teamId.length <= 4 ? teamId.toUpperCase() : teamId.slice(0, 3).toUpperCase(), 
+    color: '#6366f1', 
+    secondaryColor: '#f97316' 
+  }
 }
 
 function formatTeamName(teamId: string): string {
@@ -33,38 +61,33 @@ function formatTeamName(teamId: string): string {
 function TeamAvatar({ teamId, size = 36 }: { teamId: string; size?: number }) {
   const cfg = getTeamConfig(teamId)
   return (
-    <div style={{
-      width: size, height: size,
-      borderRadius: size * 0.28,
-      background: cfg.color,
-      display: 'flex', alignItems: 'center', justifyContent: 'center',
-      fontSize: size * 0.28, fontWeight: 700, color: '#fff',
-      fontFamily: "'Fira Code', monospace",
-      letterSpacing: '-0.5px',
-      flexShrink: 0,
-      boxShadow: `0 2px 8px ${cfg.color}55`,
-    }}>
+    <div 
+      className="rounded-lg flex items-center justify-center font-fira-code font-bold text-white shrink-0 shadow-lg"
+      style={{
+        width: size, height: size,
+        background: cfg.color,
+        fontSize: size * 0.28,
+        boxShadow: `0 2px 8px ${cfg.color}55`,
+      }}
+    >
       {cfg.abbr.slice(0, 3)}
     </div>
   )
 }
 
-function SectionHeader({ title, tag, right }: { title: string; tag?: string; right?: React.ReactNode }) {
+function SectionHeader({ title, tag, right, icon: Icon }: { title: string; tag?: string; right?: React.ReactNode; icon?: any }) {
   return (
-    <div style={{
-      display: 'flex', alignItems: 'center', gap: '10px',
-      marginBottom: '14px',
-    }}>
-      <h2 style={{
-        fontFamily: "'Fira Code', monospace",
-        fontSize: '11px', fontWeight: 600,
-        color: 'var(--text-secondary)', letterSpacing: '0.1em',
-        margin: 0, textTransform: 'uppercase',
-      }}>
+    <div className="flex items-center gap-2.5 mb-3.5">
+      {Icon && <Icon className="w-3.5 h-3.5 text-text-muted" />}
+      <h2 className="font-fira-code text-[11px] font-semibold text-text-secondary tracking-widest uppercase m-0">
         {title}
       </h2>
-      {tag && <span className="badge badge-blue">{tag}</span>}
-      <div style={{ flex: 1, height: '1px', background: 'var(--border)' }} />
+      {tag && (
+        <span className="px-2 py-0.5 rounded bg-brand-blue-dim text-brand-blue border border-brand-blue-dim/20 text-[10px] font-bold tracking-widest uppercase">
+          {tag}
+        </span>
+      )}
+      <div className="flex-1 h-px bg-border" />
       {right}
     </div>
   )
@@ -73,106 +96,58 @@ function SectionHeader({ title, tag, right }: { title: string; tag?: string; rig
 // ── Stat card ─────────────────────────────────────────────────────────────
 
 function StatCard({
-  label, value, sub, icon, accent, gradientColor,
+  label, value, sub, icon: Icon, accent, gradientColor,
 }: {
   label: string
   value: string | number
   sub?: string
-  icon: React.ReactNode
+  icon: any
   accent?: boolean
   gradientColor?: string
 }) {
   const gColor = gradientColor ?? '#6366f1'
   return (
-    <div className="stat-card" style={{ cursor: 'default' }}>
+    <div className="stat-card p-5 pb-5 rounded-xl bg-card border border-border transition-all hover:border-brand-blue/20 hover:shadow-[0_0_24px_rgba(99,102,241,0.1)] group relative overflow-hidden">
       {/* Top gradient bar */}
-      <div className="stat-card-top-bar" style={{
-        background: accent
-          ? `linear-gradient(90deg, ${gColor}, transparent)`
-          : 'transparent',
-      }} />
+      <div 
+        className="absolute top-0 left-0 right-0 h-[2px]"
+        style={{
+          background: accent ? `linear-gradient(90deg, ${gColor}, transparent)` : 'transparent',
+        }} 
+      />
 
       {/* Faint bg glow */}
       {accent && (
-        <div style={{
-          position: 'absolute', top: '-20px', left: '-20px',
-          width: '120px', height: '120px',
-          background: `radial-gradient(circle, ${gColor}18 0%, transparent 70%)`,
-          pointerEvents: 'none',
-        }} />
+        <div 
+          className="absolute -top-5 -left-5 w-30 h-30 pointer-events-none"
+          style={{ background: `radial-gradient(circle, ${gColor}18 0%, transparent 70%)` }} 
+        />
       )}
 
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
-        <div style={{
-          fontSize: '10px', color: 'var(--text-muted)',
-          letterSpacing: '0.1em', fontWeight: 600, textTransform: 'uppercase',
-        }}>
+      <div className="flex justify-between items-start mb-3">
+        <div className="text-[10px] text-text-muted tracking-widest font-bold uppercase">
           {label}
         </div>
-        <div style={{
-          width: '32px', height: '32px',
-          background: accent ? `${gColor}18` : 'var(--border)',
-          borderRadius: '8px',
-          display: 'flex', alignItems: 'center', justifyContent: 'center',
-          color: accent ? gColor : 'var(--text-muted)',
-        }}>
-          {icon}
+        <div className={`w-8 h-8 rounded-lg flex items-center justify-center ${accent ? '' : 'bg-border text-text-muted'}`}
+             style={{ background: accent ? `${gColor}18` : undefined, color: accent ? gColor : undefined }}>
+          <Icon className="w-4 h-4" />
         </div>
       </div>
 
-      <div style={{
-        fontFamily: "'Fira Code', monospace",
-        fontSize: '30px', fontWeight: 700,
-        color: accent ? gColor : 'var(--text-primary)',
-        lineHeight: 1.15, marginTop: '12px',
-        letterSpacing: '-1px',
-      }}>
+      <div 
+        className="font-fira-code text-[30px] font-bold leading-[1.15] tracking-tighter"
+        style={{ color: accent ? gColor : 'var(--text-primary)' }}
+      >
         {value}
       </div>
       {sub && (
-        <div style={{ fontSize: '12px', color: 'var(--text-muted)', marginTop: '4px' }}>
+        <div className="text-xs text-text-muted mt-1">
           {sub}
         </div>
       )}
     </div>
   )
 }
-
-// ── Icon SVGs (inline, no emoji) ──────────────────────────────────────────
-
-const IconCalendar = () => (
-  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round">
-    <rect x="3" y="4" width="18" height="18" rx="2" />
-    <line x1="16" y1="2" x2="16" y2="6" />
-    <line x1="8" y1="2" x2="8" y2="6" />
-    <line x1="3" y1="10" x2="21" y2="10" />
-  </svg>
-)
-
-const IconShield = () => (
-  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round">
-    <path d="M12 2L3 7v5c0 5.25 3.75 10.15 9 11.35C17.25 22.15 21 17.25 21 12V7L12 2z" />
-  </svg>
-)
-
-const IconTrophy = () => (
-  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round">
-    <path d="M6 9H4.5a2.5 2.5 0 0 1 0-5H6" />
-    <path d="M18 9h1.5a2.5 2.5 0 0 0 0-5H18" />
-    <path d="M4 22h16" />
-    <path d="M10 14.66V17c0 .55-.47.98-.97 1.21C7.85 18.75 7 20.24 7 22" />
-    <path d="M14 14.66V17c0 .55.47.98.97 1.21C16.15 18.75 17 20.24 17 22" />
-    <path d="M18 2H6v7a6 6 0 0 0 12 0V2z" />
-  </svg>
-)
-
-const IconDatabase = () => (
-  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round">
-    <ellipse cx="12" cy="5" rx="9" ry="3" />
-    <path d="M21 12c0 1.66-4 3-9 3s-9-1.34-9-3" />
-    <path d="M3 5v14c0 1.66 4 3 9 3s9-1.34 9-3V5" />
-  </svg>
-)
 
 // ── Match card ────────────────────────────────────────────────────────────
 
@@ -197,67 +172,47 @@ function MatchCard({ match }: {
   const isT2Winner = winner === t2
 
   return (
-    <div className="match-card" style={{
-      display: 'grid',
-      gridTemplateColumns: '1fr 68px 1fr',
-      alignItems: 'center',
-      gap: '10px',
-    }}>
+    <div className="match-card grid grid-cols-[1fr_68px_1fr] items-center gap-2.5 p-3.5 px-4.5 bg-card border border-border rounded-xl hover:bg-card-hover hover:border-brand-blue/20 transition-all cursor-pointer">
       {/* Team 1 */}
-      <div style={{
-        display: 'flex', alignItems: 'center', gap: '10px',
-        opacity: winner && !isT1Winner ? 0.5 : 1,
-        transition: 'opacity 0.15s',
-      }}>
+      <div className={`flex items-center gap-2.5 transition-opacity duration-150 ${winner && !isT1Winner ? 'opacity-50' : 'opacity-100'}`}>
         <TeamAvatar teamId={t1} size={32} />
         <div>
-          <div style={{
-            fontSize: '12px', fontWeight: 600,
-            color: isT1Winner ? 'var(--text-primary)' : 'var(--text-secondary)',
-          }}>
+          <div className={`text-xs font-bold ${isT1Winner ? 'text-text-primary' : 'text-text-secondary'}`}>
             {getTeamConfig(t1).abbr}
           </div>
-          <div style={{ fontSize: '10px', color: 'var(--text-muted)', marginTop: '1px' }}>
+          <div className="text-[10px] text-text-muted mt-0.5">
             {formatTeamName(t1).split(' ')[0]}
           </div>
         </div>
-        {isT1Winner && <span className="badge badge-green" style={{ marginLeft: 'auto' }}>WON</span>}
+        {isT1Winner && (
+          <span className="ml-auto px-2 py-0.5 rounded bg-brand-green-dim text-brand-green border border-brand-green-dim/20 text-[9px] font-bold tracking-widest">
+            WON
+          </span>
+        )}
       </div>
 
       {/* Center */}
-      <div style={{ textAlign: 'center' }}>
-        <div style={{
-          fontFamily: "'Fira Code', monospace",
-          fontSize: '11px', fontWeight: 600,
-          color: 'var(--text-muted)',
-          letterSpacing: '0.08em',
-        }}>
+      <div className="text-center">
+        <div className="font-fira-code text-[11px] font-bold text-text-muted tracking-widest">
           VS
         </div>
-        <div style={{
-          fontSize: '10px', color: 'var(--text-dim)',
-          marginTop: '3px', letterSpacing: '0.03em',
-        }}>
+        <div className="text-[10px] text-text-dim mt-0.5 tracking-tight">
           {dateStr}
         </div>
       </div>
 
       {/* Team 2 */}
-      <div style={{
-        display: 'flex', alignItems: 'center', gap: '10px',
-        justifyContent: 'flex-end',
-        opacity: winner && !isT2Winner ? 0.5 : 1,
-        transition: 'opacity 0.15s',
-      }}>
-        {isT2Winner && <span className="badge badge-green">WON</span>}
-        <div style={{ textAlign: 'right' }}>
-          <div style={{
-            fontSize: '12px', fontWeight: 600,
-            color: isT2Winner ? 'var(--text-primary)' : 'var(--text-secondary)',
-          }}>
+      <div className={`flex items-center gap-2.5 justify-end transition-opacity duration-150 ${winner && !isT2Winner ? 'opacity-50' : 'opacity-100'}`}>
+        {isT2Winner && (
+          <span className="px-2 py-0.5 rounded bg-brand-green-dim text-brand-green border border-brand-green-dim/20 text-[9px] font-bold tracking-widest">
+            WON
+          </span>
+        )}
+        <div className="text-right">
+          <div className={`text-xs font-bold ${isT2Winner ? 'text-text-primary' : 'text-text-secondary'}`}>
             {getTeamConfig(t2).abbr}
           </div>
-          <div style={{ fontSize: '10px', color: 'var(--text-muted)', marginTop: '1px' }}>
+          <div className="text-[10px] text-text-muted mt-0.5">
             {formatTeamName(t2).split(' ')[0]}
           </div>
         </div>
@@ -277,27 +232,12 @@ function StandingsRow({
   maxWins: number
 }) {
   const cfg = getTeamConfig(team.team_id)
-  const winPct = team.played > 0 ? (team.wins / team.played) * 100 : 0
   const isPlayoff = rank <= 4
 
   return (
-    <div style={{
-      display: 'grid',
-      gridTemplateColumns: '26px 28px 1fr 34px 34px 42px',
-      gap: '6px',
-      padding: '10px 16px',
-      alignItems: 'center',
-      borderBottom: '1px solid var(--border-subtle)',
-      background: isPlayoff ? 'rgba(99,102,241,0.02)' : 'transparent',
-      transition: 'background 0.15s',
-    }}>
+    <div className={`grid grid-cols-[26px_28px_1fr_34px_34px_42px] gap-1.5 px-4 py-2.5 items-center border-b border-border-subtle transition-colors ${isPlayoff ? 'bg-brand-blue-dim/20' : 'hover:bg-white/[0.01]'}`}>
       {/* Rank */}
-      <span style={{
-        fontFamily: "'Fira Code', monospace",
-        fontSize: '11px',
-        color: isPlayoff ? 'var(--blue-light)' : 'var(--text-dim)',
-        fontWeight: isPlayoff ? 700 : 400,
-      }}>
+      <span className={`font-fira-code text-[11px] ${isPlayoff ? 'text-brand-blue font-bold' : 'text-text-dim font-normal'}`}>
         {rank}
       </span>
 
@@ -305,17 +245,13 @@ function StandingsRow({
       <TeamAvatar teamId={team.team_id} size={24} />
 
       {/* Team name + bar */}
-      <div style={{ overflow: 'hidden', minWidth: 0 }}>
-        <div style={{
-          fontSize: '12px', fontWeight: 500,
-          color: 'var(--text-primary)',
-          whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
-        }}>
+      <div className="overflow-hidden min-w-0">
+        <div className="text-xs font-medium text-text-primary truncate">
           {cfg.abbr}
         </div>
-        <div className="win-bar-track" style={{ width: '100%' }}>
+        <div className="h-1 bg-border rounded-full overflow-hidden mt-1 w-full">
           <div
-            className="win-bar-fill"
+            className="h-full rounded-full transition-all duration-500"
             style={{
               width: `${maxWins > 0 ? (team.wins / maxWins) * 100 : 0}%`,
               background: `linear-gradient(90deg, ${cfg.color}cc, ${cfg.color}66)`,
@@ -325,44 +261,22 @@ function StandingsRow({
       </div>
 
       {/* W */}
-      <span style={{
-        textAlign: 'center',
-        fontFamily: "'Fira Code', monospace",
-        fontSize: '13px', fontWeight: 600,
-        color: 'var(--green)',
-      }}>
+      <span className="text-center font-fira-code text-[13px] font-bold text-brand-green">
         {team.wins}
       </span>
 
       {/* L */}
-      <span style={{
-        textAlign: 'center',
-        fontFamily: "'Fira Code', monospace",
-        fontSize: '13px',
-        color: 'var(--text-muted)',
-      }}>
+      <span className="text-center font-fira-code text-[13px] text-text-muted">
         {team.losses}
       </span>
 
       {/* PTS */}
-      <span style={{
-        textAlign: 'center',
-        fontFamily: "'Fira Code', monospace",
-        fontSize: '13px', fontWeight: 700,
-        color: isPlayoff ? 'var(--blue-light)' : 'var(--text-primary)',
-        background: isPlayoff ? 'var(--blue-dim)' : 'transparent',
-        borderRadius: '4px', padding: '2px 4px',
-      }}>
+      <span className={`text-center font-fira-code text-[13px] font-bold rounded px-1 min-w-[28px] ${isPlayoff ? 'text-brand-blue bg-brand-blue-dim' : 'text-text-primary'}`}>
         {team.wins * 2}
       </span>
     </div>
   )
 }
-
-// ── Win/Loss bar chart (client-rendered) ──────────────────────────────────
-// Because recharts uses browser APIs, wrap in a server-safe component.
-// For App Router we render this directly (recharts is compatible with RSC
-// output as long as we mark the parent or use 'use client').
 
 // ── Dashboard page ────────────────────────────────────────────────────────
 
@@ -378,7 +292,6 @@ export default async function DashboardPage() {
   const topTeamCfg = topTeam ? getTeamConfig(topTeam.team_id) : null
   const maxWins = standings[0]?.wins ?? 1
 
-  // Chart data — top 8 teams
   const chartData = standings.slice(0, 8).map(t => ({
     name: getTeamConfig(t.team_id).abbr,
     wins: t.wins,
@@ -387,63 +300,37 @@ export default async function DashboardPage() {
   }))
 
   return (
-    <div style={{
-      padding: '32px 36px',
-      maxWidth: '1160px',
-      minHeight: '100vh',
-    }}>
+    <div className="p-8 pb-12 max-w-7xl min-h-screen">
 
       {/* ── Page header ─────────────────────────────────────────────────── */}
-      <div style={{ marginBottom: '28px' }}>
-        <div style={{
-          display: 'flex', alignItems: 'center', gap: '10px',
-          marginBottom: '8px',
-        }}>
-          <span className="badge badge-orange" style={{ fontSize: '9px' }}>
-            IPL {season}
+      <div className="mb-7">
+        <div className="flex items-center gap-2.5 mb-2">
+          <span className="px-2 py-0.5 rounded bg-brand-orange-dim text-brand-orange border border-brand-orange-dim/20 text-[9px] font-bold tracking-widest uppercase">
+            IPL {season ?? '2026'}
           </span>
-          <span style={{
-            fontSize: '11px', color: 'var(--text-dim)',
-            letterSpacing: '0.05em',
-          }}>
+          <span className="text-[11px] text-text-dim tracking-wider font-semibold">
             INDIAN PREMIER LEAGUE
           </span>
         </div>
-        <h1 style={{
-          fontFamily: "'Fira Code', monospace",
-          fontSize: '28px', fontWeight: 700, margin: 0,
-          lineHeight: 1.15, letterSpacing: '-0.5px',
-        }}>
-          <span style={{
-            background: 'linear-gradient(135deg, #f1f5f9 0%, #94a3b8 100%)',
-            WebkitBackgroundClip: 'text',
-            WebkitTextFillColor: 'transparent',
-            backgroundClip: 'text',
-          }}>
+        <h1 className="font-fira-code text-3xl font-bold leading-tight tracking-tight m-0">
+          <span className="bg-gradient-to-br from-white to-text-secondary bg-clip-text text-transparent italic">
             Match Intelligence
           </span>
-          <span style={{ color: 'var(--orange)', WebkitTextFillColor: 'var(--orange)' }}>.</span>
+          <span className="text-brand-orange">.</span>
         </h1>
-        <p style={{
-          margin: '6px 0 0',
-          fontSize: '13px', color: 'var(--text-muted)',
-        }}>
-          Real-time IPL data · Fantasy cricket analytics
+        <p className="mt-1.5 text-[13px] text-text-muted flex items-center gap-2">
+          <Activity className="w-3.5 h-3.5 text-brand-blue" />
+          Real-time IPL data &middot; Fantasy cricket analytics
         </p>
       </div>
 
       {/* ── Stat cards ──────────────────────────────────────────────────── */}
-      <div style={{
-        display: 'grid',
-        gridTemplateColumns: 'repeat(4, 1fr)',
-        gap: '14px',
-        marginBottom: '32px',
-      }}>
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3.5 mb-8">
         <StatCard
           label="Matches Played"
           value={totalMatches}
-          sub={`IPL ${season} season`}
-          icon={<IconCalendar />}
+          sub={`IPL ${season ?? '2026'} season`}
+          icon={Calendar}
           accent
           gradientColor="#6366f1"
         />
@@ -451,7 +338,7 @@ export default async function DashboardPage() {
           label="Active Teams"
           value={standings.length || 10}
           sub="IPL franchises"
-          icon={<IconShield />}
+          icon={Shield}
           accent
           gradientColor="#f97316"
         />
@@ -459,7 +346,7 @@ export default async function DashboardPage() {
           label="Top Team"
           value={topTeam ? getTeamConfig(topTeam.team_id).abbr : '—'}
           sub={topTeam ? `${topTeam.wins}W · ${topTeam.wins * 2} pts` : 'No data'}
-          icon={<IconTrophy />}
+          icon={Trophy}
           accent
           gradientColor={topTeamCfg?.color ?? '#10b981'}
         />
@@ -467,45 +354,32 @@ export default async function DashboardPage() {
           label="Data Coverage"
           value="6"
           sub="T20 leagues loaded"
-          icon={<IconDatabase />}
+          icon={Database}
           gradientColor="#6366f1"
         />
       </div>
 
       {/* ── Main two-column layout ───────────────────────────────────────── */}
-      <div style={{
-        display: 'grid',
-        gridTemplateColumns: '1fr 360px',
-        gap: '24px',
-        alignItems: 'start',
-      }}>
+      <div className="grid grid-cols-1 xl:grid-cols-[1fr_360px] gap-6 items-start">
 
         {/* ── Left column ─────────────────────────────────────────────── */}
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '28px' }}>
+        <div className="flex flex-col gap-7">
 
           {/* Win / Loss chart */}
           <div>
-            <SectionHeader title="Team Performance" tag="W / L" />
-            <div style={{
-              background: 'var(--card)',
-              border: '1px solid var(--border)',
-              borderRadius: '12px',
-              padding: '20px 16px 12px',
-            }}>
+            <SectionHeader title="Team Performance" tag="W / L" icon={TrendingUp} />
+            <div className="bg-card border border-border rounded-xl p-5 pt-5 pb-3">
               <TeamPerformanceChart data={chartData} />
 
               {/* Legend */}
-              <div style={{
-                display: 'flex', gap: '16px', justifyContent: 'flex-end',
-                marginTop: '8px', paddingRight: '8px',
-              }}>
+              <div className="flex gap-4 justify-end mt-2 pr-2">
                 {[
                   { label: 'Wins', color: '#6366f1' },
-                  { label: 'Losses', color: '#ef444455' },
+                  { label: 'Losses', color: 'rgba(239, 68, 68, 0.3)' },
                 ].map(({ label, color }) => (
-                  <div key={label} style={{ display: 'flex', alignItems: 'center', gap: '5px' }}>
-                    <div style={{ width: '8px', height: '8px', borderRadius: '2px', background: color }} />
-                    <span style={{ fontSize: '10px', color: 'var(--text-muted)' }}>{label}</span>
+                  <div key={label} className="flex items-center gap-1.5">
+                    <div className="w-2 h-2 rounded-sm" style={{ background: color }} />
+                    <span className="text-[10px] text-text-muted font-medium uppercase tracking-wider">{label}</span>
                   </div>
                 ))}
               </div>
@@ -517,20 +391,17 @@ export default async function DashboardPage() {
             <SectionHeader
               title="Recent Matches"
               tag="LIVE"
+              icon={History}
               right={
-                <span style={{ fontSize: '11px', color: 'var(--text-dim)' }}>
-                  Last {recentMatches.length} games
+                <span className="text-[11px] text-text-dim font-bold tracking-wider">
+                  LAST {recentMatches.length} GAMES
                 </span>
               }
             />
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+            <div className="flex flex-col gap-1.5">
               {recentMatches.length === 0 ? (
-                <div style={{
-                  background: 'var(--card)', border: '1px solid var(--border)',
-                  borderRadius: '12px', padding: '32px', textAlign: 'center',
-                  color: 'var(--text-muted)', fontSize: '13px',
-                }}>
-                  No match data yet.
+                <div className="bg-card border border-border rounded-xl p-8 py-12 text-center text-text-muted text-sm italic">
+                  No match data currently available.
                 </div>
               ) : recentMatches.map(m => (
                 <MatchCard key={m.match_id} match={m} />
@@ -540,38 +411,22 @@ export default async function DashboardPage() {
         </div>
 
         {/* ── Right column: Points table ───────────────────────────────── */}
-        <div>
-          <SectionHeader title="Points Table" tag={season} />
-          <div style={{
-            background: 'var(--card)',
-            border: '1px solid var(--border)',
-            borderRadius: '12px',
-            overflow: 'hidden',
-          }}>
+        <div className="sticky top-8">
+          <SectionHeader title="Points Table" tag={season ?? '2026'} icon={Trophy} />
+          <div className="bg-card border border-border rounded-xl overflow-hidden">
             {/* Table header */}
-            <div style={{
-              display: 'grid',
-              gridTemplateColumns: '26px 28px 1fr 34px 34px 42px',
-              gap: '6px',
-              padding: '10px 16px',
-              borderBottom: '1px solid var(--border)',
-              fontSize: '10px', color: 'var(--text-dim)',
-              fontWeight: 600, letterSpacing: '0.09em',
-            }}>
+            <div className="grid grid-cols-[26px_28px_1fr_34px_34px_42px] gap-1.5 px-4 py-3 border-b border-border text-[10px] text-text-dim font-bold tracking-widest uppercase">
               <span>#</span>
               <span />
-              <span>TEAM</span>
-              <span style={{ textAlign: 'center' }}>W</span>
-              <span style={{ textAlign: 'center' }}>L</span>
-              <span style={{ textAlign: 'center' }}>PTS</span>
+              <span>Team</span>
+              <span className="text-center">W</span>
+              <span className="text-center">L</span>
+              <span className="text-center">Pts</span>
             </div>
 
             {standings.length === 0 ? (
-              <div style={{
-                padding: '32px 16px', textAlign: 'center',
-                color: 'var(--text-muted)', fontSize: '12px',
-              }}>
-                No standings for {season} yet.
+              <div className="p-8 py-12 text-center text-text-muted text-xs italic">
+                Standings data unavailable for {season ?? '2026'}.
               </div>
             ) : standings.map((team, i) => (
               <StandingsRow
@@ -584,18 +439,9 @@ export default async function DashboardPage() {
           </div>
 
           {standings.length > 0 && (
-            <div style={{
-              marginTop: '10px', fontSize: '11px', color: 'var(--text-muted)',
-              display: 'flex', alignItems: 'center', gap: '6px',
-              paddingLeft: '4px',
-            }}>
-              <div style={{
-                width: '8px', height: '8px', borderRadius: '2px',
-                background: 'var(--blue-dim)',
-                border: '1px solid rgba(99,102,241,0.3)',
-                flexShrink: 0,
-              }} />
-              Top 4 qualify for playoffs
+            <div className="mt-3 text-[11px] text-text-muted flex items-center gap-2 px-1">
+              <div className="w-2 h-2 rounded-sm bg-brand-blue-dim border border-brand-blue/30 shrink-0 shadow-[0_0_8px_rgba(99,102,241,0.2)]" />
+              <span className="font-medium">Top 4 teams qualify for playoffs</span>
             </div>
           )}
         </div>
