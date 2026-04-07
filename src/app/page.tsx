@@ -18,16 +18,16 @@ import {
 } from 'lucide-react'
 
 // ── Design tokens ─────────────────────────────────────────────────────────────
-// KKR: deep purple-black bg, gold accents, violet mid-tones
-const BG       = '#08010F'        // near-black with purple undertone
-const GOLD     = '#FFB800'        // KKR gold
-const GOLD_LT  = '#FFD15C'        // lighter gold
-const GOLD_DK  = '#CC8800'        // darker gold
-const PURPLE   = '#7C3AED'        // violet accent
-const PURPLE_D = '#2D0A5E'        // deep purple surface
-const WHITE    = '#F5F0FF'        // white with purple tint
-const MUTED    = '#6B5B8A'        // muted purple-grey
-const DIM      = '#3B2D5A'        // very dim purple
+// RCB: deep red-black bg, gold accents, crimson mid-tones
+const BG       = '#0A0003'        // near-black with red undertone
+const GOLD     = '#F0A500'        // RCB gold
+const GOLD_LT  = '#FFD060'        // lighter gold
+const GOLD_DK  = '#C07800'        // darker gold
+const RED      = '#C8102E'        // RCB crimson red
+const RED_D    = '#4A0010'        // deep red surface
+const WHITE    = '#FFF5F5'        // white with warm tint
+const MUTED    = '#8A5A62'        // muted red-grey
+const DIM      = '#5A2530'        // very dim red
 
 const BEBAS = { fontFamily: "'Bebas Neue', sans-serif" }
 const DM    = { fontFamily: "'DM Sans', sans-serif" }
@@ -84,7 +84,7 @@ const PredictionCard = () => {
     <div
       className="relative w-full max-w-[340px] rounded-2xl overflow-hidden"
       style={{
-        background: `linear-gradient(160deg, ${PURPLE_D}CC 0%, ${BG}EE 100%)`,
+        background: `linear-gradient(160deg, ${RED_D}CC 0%, ${BG}EE 100%)`,
         border: `1px solid ${GOLD}30`,
         boxShadow: `0 0 80px ${GOLD}12, 0 32px 64px rgba(0,0,0,0.6), inset 0 1px 0 ${GOLD}20`,
       }}
@@ -156,7 +156,7 @@ const PredictionCard = () => {
               <span style={{ ...MONO, fontSize: 11, color: GOLD, fontWeight: 700 }}>
                 {p.pts}<span style={{ color: DIM, fontWeight: 400 }}> pts</span>
               </span>
-              <div className="w-16 h-1 rounded-full overflow-hidden" style={{ background: `${PURPLE}30` }}>
+              <div className="w-16 h-1 rounded-full overflow-hidden" style={{ background: `${RED}30` }}>
                 <motion.div
                   className="h-full rounded-full"
                   style={{ background: `linear-gradient(90deg, ${GOLD}, ${GOLD_LT})` }}
@@ -210,7 +210,7 @@ const Ticker = () => {
       style={{
         borderTop: `1px solid ${GOLD}18`,
         borderBottom: `1px solid ${GOLD}18`,
-        background: `linear-gradient(90deg, ${PURPLE_D}40, ${BG}60, ${PURPLE_D}40)`,
+        background: `linear-gradient(90deg, ${RED_D}40, ${BG}60, ${RED_D}40)`,
       }}
     >
       <div className="flex animate-marquee whitespace-nowrap">
@@ -329,7 +329,7 @@ const FeatureCard = ({ feat, index }: { feat: typeof FEATURES[0]; index: number 
       transition={{ duration: 0.6, delay: index * 0.1, ease: 'easeOut' }}
       className="group relative rounded-2xl p-8 overflow-hidden"
       style={{
-        background: `linear-gradient(145deg, ${PURPLE_D}80 0%, ${BG}99 100%)`,
+        background: `linear-gradient(145deg, ${RED_D}80 0%, ${BG}99 100%)`,
         border: `1px solid ${GOLD}18`,
       }}
     >
@@ -347,7 +347,7 @@ const FeatureCard = ({ feat, index }: { feat: typeof FEATURES[0]; index: number 
       {/* Large ghost number */}
       <div
         className="absolute right-4 top-2 select-none pointer-events-none"
-        style={{ ...BEBAS, fontSize: 100, color: `${PURPLE}12`, lineHeight: 1 }}
+        style={{ ...BEBAS, fontSize: 100, color: `${RED}12`, lineHeight: 1 }}
       >
         {feat.num}
       </div>
@@ -448,8 +448,8 @@ export default function LandingPage() {
         <div className="absolute inset-0 pointer-events-none" style={{
           background: `
             radial-gradient(ellipse 70% 60% at 65% 35%, ${GOLD}07 0%, transparent 65%),
-            radial-gradient(ellipse 50% 70% at 15% 70%, ${PURPLE}12 0%, transparent 55%),
-            radial-gradient(ellipse 40% 40% at 80% 80%, ${PURPLE_D}80 0%, transparent 60%)
+            radial-gradient(ellipse 50% 70% at 15% 70%, ${RED}12 0%, transparent 55%),
+            radial-gradient(ellipse 40% 40% at 80% 80%, ${RED_D}80 0%, transparent 60%)
           `,
         }} />
 
@@ -566,7 +566,7 @@ export default function LandingPage() {
                 className="flex items-center gap-4 mt-10"
               >
                 <div className="flex -space-x-2">
-                  {[PURPLE, GOLD, '#c84b31', `${GOLD_LT}`].map((c, i) => (
+                  {[RED, GOLD, '#c84b31', `${GOLD_LT}`].map((c, i) => (
                     <div
                       key={i}
                       className="w-8 h-8 rounded-full border-2 flex items-center justify-center text-[10px] font-bold"
@@ -692,7 +692,7 @@ export default function LandingPage() {
              style={{ '--tw-divide-opacity': 1 } as React.CSSProperties}>
           {[
             { phase: 'PHASE 1', label: 'DONE',   title: 'Data Ingestion & Live Sync',       color: GOLD },
-            { phase: 'PHASE 2', label: 'ACTIVE',  title: 'ML Model Training & Predictions', color: PURPLE },
+            { phase: 'PHASE 2', label: 'ACTIVE',  title: 'ML Model Training & Predictions', color: RED },
             { phase: 'PHASE 3', label: 'NEXT',    title: 'Team Optimizer & Auto-Draft',     color: MUTED },
           ].map((item, i) => (
             <motion.div

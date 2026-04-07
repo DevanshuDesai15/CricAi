@@ -171,7 +171,7 @@ body {
   100% { background-position: 200% center; }
 }
 .shimmer-gold {
-  background: linear-gradient(90deg, #FFB800 0%, #FFD15C 40%, #FFB800 60%, #CC8800 100%);
+  background: linear-gradient(90deg, #C8102E 0%, #F0A500 30%, #FFD060 55%, #F0A500 75%, #C8102E 100%);
   background-size: 200% auto;
   -webkit-background-clip: text;
   background-clip: text;
