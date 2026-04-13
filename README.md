@@ -2,13 +2,13 @@
 
 Fantasy cricket analytics platform focused on one core question: who should you pick for tonight's Dream11 team?
 
-The current product is IPL-first. It combines historical IPL data from Cricsheet with live-season IPL 2026 syncs from `cricketdata.org`, stores everything in Supabase, and serves a Next.js dashboard for standings, recent matches, and player analysis. The next major milestone is pre-match ML predictions for fantasy points.
+The current product is IPL-first. It combines historical IPL data from Cricsheet with live-season IPL 2026 syncs from `cricketdata.org`, stores everything in Supabase, and serves a Next.js dashboard for standings, recent matches, player analysis, and upcoming-match prediction previews.
 
 ## Current Status
 
 - Phase 1 complete: app foundation, historical IPL data, player stats, dashboard
 - Phase 2 complete: live IPL 2026 sync, scheduled GitHub Actions workflow, ML feature-store views
-- Phase 3 next: pre-match fantasy point prediction models for upcoming IPL matches
+- Phase 3 in progress: baseline model, prediction API, and upcoming-match prediction UI
 
 ## Product Direction
 
@@ -22,11 +22,12 @@ Initial ML work is intentionally scoped to IPL. If the prediction pipeline produ
 - Data ingestion: Python
 - Historical source: Cricsheet
 - Live source: `cricketdata.org`
-- ML foundation: SQL feature views in Supabase, planned Python training/inference pipeline
+- ML foundation: SQL feature views in Supabase, Python training/inference pipeline, and upcoming-match prediction flow
 
 ## What Exists Today
 
 - IPL dashboard with 2026 standings and recent matches
+- Upcoming-match prediction panel powered by the baseline ML pipeline
 - Player directory and player profile stats
 - Historical IPL match and player-match-stat ingestion
 - Live IPL 2026 sync via GitHub Actions
@@ -107,6 +108,23 @@ Phase 2 established the feature-store layer in `supabase/migrations/002_ml_featu
 - `player_venue_stats`: career aggregates by venue
 - `head_to_head_stats`: career aggregates by opposition
 
+## Upcoming Match Predictions
+
+Train the baseline model:
+
+```bash
+cd scripts
+./.venv/bin/python -m ml.train
+```
+
+Run a prediction for a specific match:
+
+```bash
+curl http://localhost:3000/api/predictions/match/<match_id>
+```
+
+The app now infers a likely XI from each team's most recent completed IPL match when explicit `team_compositions` data is unavailable.
+
 ## Docs
 
 - Roadmap: `docs/ROADMAP.md`
@@ -115,4 +133,4 @@ Phase 2 established the feature-store layer in `supabase/migrations/002_ml_featu
 
 ## Next Step
 
-Phase 3 is the immediate priority: train and serve pre-match fantasy point predictions for upcoming IPL matches, then expose ranked player recommendations in the app.
+Phase 3 is now in progress inside the product: the baseline model and prediction API are wired into the dashboard for upcoming IPL matches. The next step is improving player-pool quality and model accuracy.

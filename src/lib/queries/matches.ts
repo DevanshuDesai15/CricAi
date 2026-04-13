@@ -10,6 +10,11 @@ export interface MatchSummary {
   season: string
 }
 
+export interface UpcomingMatch extends MatchSummary {
+  team1_id: string
+  team2_id: string
+}
+
 export interface TeamStanding {
   team_id: string
   wins: number
@@ -28,6 +33,38 @@ export async function listRecentMatches(league = 'ipl', limit = 20): Promise<Mat
 
   if (error) throw error
   return data ?? []
+}
+
+export async function listUpcomingMatches(league = 'ipl', limit = 5): Promise<UpcomingMatch[]> {
+  const supabase = await createServerSupabaseClient()
+  const today = new Date().toISOString().slice(0, 10)
+
+  const { data, error } = await supabase
+    .from('matches')
+    .select('match_id, match_date, team1_id, team2_id, winner, venue_id, season')
+    .eq('league_id', league)
+    .is('winner', null)
+    .gte('match_date', today)
+    .not('team1_id', 'is', null)
+    .not('team2_id', 'is', null)
+    .order('match_date', { ascending: true })
+    .limit(limit)
+
+  if (error) throw error
+  return (data ?? []) as UpcomingMatch[]
+}
+
+export async function getUpcomingMatch(matchId: string): Promise<UpcomingMatch | null> {
+  const supabase = await createServerSupabaseClient()
+  const { data, error } = await supabase
+    .from('matches')
+    .select('match_id, match_date, team1_id, team2_id, winner, venue_id, season')
+    .eq('match_id', matchId)
+    .is('winner', null)
+    .single()
+
+  if (error) return null
+  return data as UpcomingMatch
 }
 
 export async function getLatestIPLSeason(): Promise<string> {

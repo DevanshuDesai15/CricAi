@@ -1,14 +1,15 @@
-import { getIPLStandings, getLatestIPLSeason, listRecentMatches } from '@/lib/queries/matches'
+import { getIPLStandings, getLatestIPLSeason, listRecentMatches, listUpcomingMatches } from '@/lib/queries/matches'
 import { TeamPerformanceChart } from '@/components/TeamPerformanceChart'
+import { UpcomingPredictions } from '@/components/UpcomingPredictions'
 import { 
+  type LucideIcon,
   Calendar, 
   Shield, 
   Trophy, 
   Database, 
   Activity,
   History,
-  TrendingUp,
-  ChevronRight
+  TrendingUp
 } from 'lucide-react'
 
 // ── Team config ───────────────────────────────────────────────────────────
@@ -75,7 +76,7 @@ function TeamAvatar({ teamId, size = 36 }: { teamId: string; size?: number }) {
   )
 }
 
-function SectionHeader({ title, tag, right, icon: Icon }: { title: string; tag?: string; right?: React.ReactNode; icon?: any }) {
+function SectionHeader({ title, tag, right, icon: Icon }: { title: string; tag?: string; right?: React.ReactNode; icon?: LucideIcon }) {
   return (
     <div className="flex items-center gap-2.5 mb-3.5">
       {Icon && <Icon className="w-3.5 h-3.5 text-text-muted" />}
@@ -101,7 +102,7 @@ function StatCard({
   label: string
   value: string | number
   sub?: string
-  icon: any
+  icon: LucideIcon
   accent?: boolean
   gradientColor?: string
 }) {
@@ -281,10 +282,11 @@ function StandingsRow({
 // ── Dashboard page ────────────────────────────────────────────────────────
 
 export default async function DashboardPage() {
-  const [season, standings, recentMatches] = await Promise.all([
+  const [season, standings, recentMatches, upcomingMatches] = await Promise.all([
     getLatestIPLSeason(),
     getIPLStandings(),
     listRecentMatches('ipl', 12),
+    listUpcomingMatches('ipl', 5),
   ])
 
   const totalMatches = standings.reduce((s, t) => s + t.played, 0) / 2 | 0
@@ -384,6 +386,11 @@ export default async function DashboardPage() {
                 ))}
               </div>
             </div>
+          </div>
+
+          <div>
+            <SectionHeader title="Upcoming Predictions" tag="BETA" icon={Activity} />
+            <UpcomingPredictions matches={upcomingMatches} />
           </div>
 
           {/* Recent matches */}

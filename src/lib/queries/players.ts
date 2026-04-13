@@ -23,6 +23,16 @@ export interface PlayerMatchStat {
   team_id: string | null
 }
 
+interface PlayerMatchStatsRow {
+  match_id: string
+  runs: number | null
+  balls_faced: number | null
+  wickets: number | null
+  fantasy_points: number | null
+  team_id: string | null
+  matches: Array<{ match_date: string }> | null
+}
+
 export async function listPlayers(search?: string): Promise<PlayerSummary[]> {
   const supabase = await createServerSupabaseClient()
   let query = supabase
@@ -70,9 +80,9 @@ export async function getPlayerRecentStats(playerId: string, limit = 10): Promis
     .limit(limit)
 
   if (error) throw error
-  return (data ?? []).map((row: any) => ({
+  return ((data ?? []) as PlayerMatchStatsRow[]).map((row) => ({
     match_id:       row.match_id,
-    match_date:     row.matches?.match_date ?? '',
+    match_date:     row.matches?.[0]?.match_date ?? '',
     runs:           row.runs ?? 0,
     balls_faced:    row.balls_faced ?? 0,
     wickets:        row.wickets ?? 0,

@@ -6,8 +6,7 @@ import React from 'react'
 import { 
   LayoutDashboard, 
   Activity, 
-  Trophy, 
-  Zap 
+  Trophy 
 } from 'lucide-react'
 
 // ── Nav items ─────────────────────────────────────────────────────────────
@@ -78,11 +77,11 @@ function Sidebar() {
           <div className="flex items-center gap-1.5 mb-1">
             <div className="w-1.5 h-1.5 rounded-full bg-brand-green shadow-[0_0_6px_var(--color-brand-green)] animate-pulse" />
             <div className="text-[10px] text-brand-blue font-bold tracking-widest uppercase">
-              Phase 2 Active
+              Phase 3 Active
             </div>
           </div>
           <div className="text-[11px] text-text-muted leading-tight">
-            Live Data & ML Foundation
+            Upcoming Match Predictions
           </div>
         </div>
 

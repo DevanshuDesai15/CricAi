@@ -4,6 +4,20 @@ import { NextResponse } from 'next/server'
 
 const execFileAsync = promisify(execFile)
 
+type PythonExecError = Error & {
+  stderr?: string
+  stdout?: string
+}
+
+function getPythonErrorMessage(error: unknown): string {
+  if (error instanceof Error) {
+    const execError = error as PythonExecError
+    return execError.stderr || execError.message
+  }
+
+  return 'Prediction failed'
+}
+
 export async function GET(
   _request: Request,
   context: { params: Promise<{ matchId: string }> }
@@ -21,13 +35,11 @@ export async function GET(
     )
 
     return NextResponse.json(JSON.parse(stdout))
-  } catch (error: any) {
-    const message = error?.stderr || error?.message || 'Prediction failed'
-
+  } catch (error: unknown) {
     return NextResponse.json(
       {
         error: 'prediction_failed',
-        message: String(message),
+        message: getPythonErrorMessage(error),
       },
       { status: 500 }
     )

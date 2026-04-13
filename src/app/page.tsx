@@ -22,7 +22,6 @@ import {
 const BG       = '#0A0003'        // near-black with red undertone
 const GOLD     = '#F0A500'        // RCB gold
 const GOLD_LT  = '#FFD060'        // lighter gold
-const GOLD_DK  = '#C07800'        // darker gold
 const RED      = '#C8102E'        // RCB crimson red
 const RED_D    = '#4A0010'        // deep red surface
 const WHITE    = '#FFF5F5'        // white with warm tint

@@ -33,6 +33,143 @@ def fetch_all_rows(query, page_size: int = 1000):
     return rows
 
 
+def _to_frame(data):
+    if isinstance(data, pd.DataFrame):
+        return data.copy()
+    return pd.DataFrame(data)
+
+
+def _normalize_id_series(series: pd.Series) -> pd.Series:
+    return series.astype(str).str.strip()
+
+
+def _normalize_player_rows(rows: pd.DataFrame, match_id=None) -> pd.DataFrame:
+    frame = rows.copy()
+    if "batting_order" not in frame.columns and "batting_position" in frame.columns:
+        frame["batting_order"] = frame["batting_position"]
+    if match_id is not None and "match_id" not in frame.columns:
+        frame["match_id"] = match_id
+
+    for column in ["match_id", "team_id", "player_id", "batting_order"]:
+        if column not in frame.columns:
+            frame[column] = None
+
+    frame = frame.dropna(subset=["player_id", "team_id"])
+    frame["player_id"] = frame["player_id"].astype(str)
+    frame["team_id"] = frame["team_id"].astype(str)
+    frame["batting_order"] = pd.to_numeric(frame["batting_order"], errors="coerce")
+    return frame.sort_values(["batting_order", "player_id"], na_position="last").drop_duplicates(
+        subset=["player_id"], keep="first"
+    )
+
+
+class InferenceDataError(RuntimeError):
+    def __init__(self, code: str, message: str):
+        super().__init__(message)
+        self.code = code
+        self.message = message
+
+
+def infer_recent_team_xi(team_id: str, target_match_date: str, matches_df: pd.DataFrame, stats_df: pd.DataFrame):
+    matches = _to_frame(matches_df)
+    stats = _to_frame(stats_df)
+
+    if matches.empty or stats.empty:
+        raise InferenceDataError("insufficient_player_pool", f"No recent completed match for team: {team_id}")
+
+    matches["match_date"] = pd.to_datetime(matches.get("match_date"), errors="coerce")
+    target_date = pd.to_datetime(target_match_date, errors="coerce")
+    if pd.isna(target_date):
+        raise InferenceDataError("insufficient_player_pool", f"Invalid target match date for team: {team_id}")
+
+    if "winner" not in matches.columns:
+        matches["winner"] = None
+    if "team1_id" not in matches.columns:
+        matches["team1_id"] = None
+    if "team2_id" not in matches.columns:
+        matches["team2_id"] = None
+    if "match_id" not in matches.columns:
+        matches["match_id"] = None
+
+    normalized_team_id = str(team_id).strip()
+    matches["team1_id"] = _normalize_id_series(matches["team1_id"])
+    matches["team2_id"] = _normalize_id_series(matches["team2_id"])
+    matches["winner"] = matches["winner"].where(matches["winner"].isna(), _normalize_id_series(matches["winner"]))
+    matches["match_id"] = _normalize_id_series(matches["match_id"])
+
+    completed = matches[
+        (
+            (matches["team1_id"] == normalized_team_id)
+            | (matches["team2_id"] == normalized_team_id)
+        )
+        & matches["winner"].notna()
+        & matches["match_date"].notna()
+        & (matches["match_date"] < target_date)
+    ].sort_values(["match_date", "match_id"], ascending=[False, False])
+
+    if completed.empty:
+        raise InferenceDataError("insufficient_player_pool", f"No recent completed match for team: {team_id}")
+
+    recent_match_id = str(completed.iloc[0]["match_id"]).strip()
+    if "match_id" not in stats.columns:
+        stats["match_id"] = None
+    if "team_id" not in stats.columns:
+        stats["team_id"] = None
+    stats["team_id"] = _normalize_id_series(stats["team_id"])
+    stats["match_id"] = _normalize_id_series(stats["match_id"])
+    team_rows = stats[
+        (stats["match_id"] == recent_match_id)
+        & (stats["team_id"] == normalized_team_id)
+    ].copy()
+
+    team_rows = _normalize_player_rows(team_rows)
+    if len(team_rows) < 11:
+        raise InferenceDataError("insufficient_player_pool", f"No players found for recent match: {recent_match_id}")
+
+    team_rows = team_rows.iloc[:11]
+    return [
+        {
+            "match_id": None,
+            "team_id": row["team_id"],
+            "player_id": row["player_id"],
+            "batting_order": row.get("batting_order"),
+        }
+        for _, row in team_rows.iterrows()
+    ]
+
+
+def resolve_match_player_pool(match_row: dict, compositions_df: pd.DataFrame, matches_df: pd.DataFrame, stats_df: pd.DataFrame):
+    compositions = _to_frame(compositions_df)
+    match_id = str(match_row["match_id"]).strip()
+    match_row = {**match_row, "match_id": match_id}
+    if not compositions.empty and "match_id" in compositions.columns:
+        direct = compositions.copy()
+        direct["match_id"] = _normalize_id_series(direct["match_id"])
+        direct = direct[direct["match_id"] == match_id].copy()
+    else:
+        direct = pd.DataFrame()
+
+    if not direct.empty:
+        direct = _normalize_player_rows(direct, match_id=match_id)
+        target_teams = {str(match_row["team1_id"]).strip(), str(match_row["team2_id"]).strip()}
+        present_teams = set(_normalize_id_series(direct["team_id"]).unique())
+        team_counts = direct.groupby(_normalize_id_series(direct["team_id"])).size()
+
+        if target_teams.issubset(present_teams) and all(team_counts.get(team_id, 0) >= 11 for team_id in target_teams):
+            return {
+                "source": "team_compositions",
+                "rows": direct[["match_id", "team_id", "player_id", "batting_order"]].to_dict(orient="records"),
+            }
+
+    team1_rows = infer_recent_team_xi(match_row["team1_id"], match_row["match_date"], matches_df, stats_df)
+    team2_rows = infer_recent_team_xi(match_row["team2_id"], match_row["match_date"], matches_df, stats_df)
+    rows = team1_rows + team2_rows
+    for row in rows:
+        row["match_id"] = match_id
+
+    return {"source": "recent_xi", "rows": rows}
+
+
 def finalize_feature_frame(df: pd.DataFrame) -> pd.DataFrame:
     frame = df.copy()
 
@@ -167,7 +304,7 @@ def build_match_inference_frame(match_id: str, league_id: str = "ipl") -> pd.Dat
 
     match_rows = fetch_all_rows(
         supabase.table("matches")
-        .select("match_id,season,match_date,venue_id,team1_id,team2_id")
+        .select("match_id,season,match_date,venue_id,team1_id,team2_id,winner")
         .eq("match_id", match_id)
     )
     composition_rows = fetch_all_rows(
@@ -175,22 +312,15 @@ def build_match_inference_frame(match_id: str, league_id: str = "ipl") -> pd.Dat
         .select("match_id,team_id,player_id,batting_order")
         .eq("match_id", match_id)
     )
-    if not composition_rows:
-        composition_rows = fetch_all_rows(
-            supabase.table("player_match_stats")
-            .select("match_id,team_id,player_id,batting_position")
-            .eq("match_id", match_id)
-        )
-        composition_rows = [
-            {
-                "match_id": row["match_id"],
-                "team_id": row["team_id"],
-                "player_id": row["player_id"],
-                "batting_order": row.get("batting_position"),
-            }
-            for row in composition_rows
-            if row.get("team_id") and row.get("player_id")
-        ]
+    all_match_rows = fetch_all_rows(
+        supabase.table("matches")
+        .select("match_id,match_date,team1_id,team2_id,winner")
+        .eq("league_id", league_id)
+    )
+    stats_rows = fetch_all_rows(
+        supabase.table("player_match_stats")
+        .select("match_id,team_id,player_id,batting_position")
+    )
     player_rows = fetch_all_rows(
         supabase.table("players").select("player_id,name,primary_role")
     )
@@ -211,12 +341,20 @@ def build_match_inference_frame(match_id: str, league_id: str = "ipl") -> pd.Dat
     )
 
     if not match_rows:
-        raise RuntimeError(f"Match not found: {match_id}")
-    if not composition_rows:
-        raise RuntimeError(f"No player pool found for match: {match_id}")
+        raise InferenceDataError("match_not_found", f"Match not found: {match_id}")
 
     match_row = match_rows[0]
-    base = pd.DataFrame(composition_rows)
+    resolved_pool = resolve_match_player_pool(
+        match_row=match_row,
+        compositions_df=pd.DataFrame(composition_rows),
+        matches_df=pd.DataFrame(all_match_rows),
+        stats_df=pd.DataFrame(stats_rows),
+    )
+
+    base = pd.DataFrame(resolved_pool["rows"])
+    if base.empty:
+        raise InferenceDataError("insufficient_player_pool", f"No player pool found for match: {match_id}")
+
     base = base.merge(pd.DataFrame(player_rows)[["player_id", "name", "primary_role"]], on="player_id", how="left")
     base["league_id"] = league_id
     base["venue_id"] = match_row["venue_id"]

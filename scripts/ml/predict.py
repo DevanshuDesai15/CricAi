@@ -29,12 +29,20 @@ def predictions_to_response(match_id: str, model_version: str, df: pd.DataFrame)
 
 
 def load_metadata():
+    if not METADATA_PATH.exists():
+        raise FileNotFoundError(f"Missing model metadata: {METADATA_PATH}")
     return json.loads(METADATA_PATH.read_text())
+
+
+def load_pipeline():
+    if not MODEL_PATH.exists():
+        raise FileNotFoundError(f"Missing model artifact: {MODEL_PATH}")
+    return joblib.load(MODEL_PATH)
 
 
 def predict_match(match_id: str) -> dict:
     metadata = load_metadata()
-    pipeline = joblib.load(MODEL_PATH)
+    pipeline = load_pipeline()
     frame = build_match_inference_frame(match_id)
 
     X = frame[CATEGORICAL_FEATURES + NUMERIC_FEATURES]
