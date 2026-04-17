@@ -257,7 +257,7 @@ def build_historical_training_frame(league_id: str = "ipl") -> pd.DataFrame:
         .eq("league_id", league_id)
     )
     player_rows = fetch_all_rows(
-        supabase.table("players").select("player_id,name,primary_role")
+        supabase.table("players").select("player_id,name,role")
     )
     recent_rows = fetch_all_rows(
         supabase.table("player_recent_form")
@@ -274,7 +274,7 @@ def build_historical_training_frame(league_id: str = "ipl") -> pd.DataFrame:
         raise RuntimeError("Historical training data is empty")
 
     base = pms_df.merge(matches_df, on="match_id", how="inner")
-    base = base.merge(players_df[["player_id", "name", "primary_role"]], on="player_id", how="left")
+    base = base.merge(players_df[["player_id", "name", "role"]], on="player_id", how="left")
 
     if not recent_df.empty:
         base = base.merge(
@@ -293,7 +293,7 @@ def build_historical_training_frame(league_id: str = "ipl") -> pd.DataFrame:
             how="left",
         )
 
-    base["role"] = base["primary_role"].fillna("unknown")
+    base["role"] = base["role"].fillna("unknown")
     base["is_home"] = 0
 
     return add_historical_context_features(base)
@@ -322,7 +322,7 @@ def build_match_inference_frame(match_id: str, league_id: str = "ipl") -> pd.Dat
         .select("match_id,team_id,player_id,batting_position")
     )
     player_rows = fetch_all_rows(
-        supabase.table("players").select("player_id,name,primary_role")
+        supabase.table("players").select("player_id,name,role")
     )
     recent_rows = fetch_all_rows(
         supabase.table("player_recent_form")
@@ -355,13 +355,13 @@ def build_match_inference_frame(match_id: str, league_id: str = "ipl") -> pd.Dat
     if base.empty:
         raise InferenceDataError("insufficient_player_pool", f"No player pool found for match: {match_id}")
 
-    base = base.merge(pd.DataFrame(player_rows)[["player_id", "name", "primary_role"]], on="player_id", how="left")
+    base = base.merge(pd.DataFrame(player_rows)[["player_id", "name", "role"]], on="player_id", how="left")
     base["league_id"] = league_id
     base["venue_id"] = match_row["venue_id"]
     base["season"] = match_row["season"]
     base["match_date"] = match_row["match_date"]
     base["batting_position"] = base["batting_order"]
-    base["role"] = base["primary_role"].fillna("unknown")
+    base["role"] = base["role"].fillna("unknown")
     base["is_home"] = 0
     base["opposition_team_id"] = base["team_id"].apply(
         lambda team_id: match_row["team2_id"] if team_id == match_row["team1_id"] else match_row["team1_id"]
