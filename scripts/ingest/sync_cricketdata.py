@@ -12,6 +12,7 @@ Requires env vars: CRICKETDATA_API_KEY, NEXT_PUBLIC_SUPABASE_URL, SUPABASE_SERVI
 import os
 import sys
 import argparse
+from datetime import date, datetime
 from pathlib import Path
 from dotenv import load_dotenv
 from supabase import create_client
@@ -19,12 +20,14 @@ from supabase import create_client
 sys.path.insert(0, str(Path(__file__).parent))
 from cricketdata_client import CricketDataClient
 from parse_cricketdata import parse_match
+from player_resolver import PlayerResolver
 
 load_dotenv(Path(__file__).parent.parent.parent / ".env.local")
 
 SUPABASE_URL = os.environ["NEXT_PUBLIC_SUPABASE_URL"]
 SUPABASE_KEY = os.environ["SUPABASE_SERVICE_ROLE_KEY"]
 API_KEY      = os.environ["CRICKETDATA_API_KEY"]
+PEOPLE_CSV   = Path(__file__).parent.parent / "data" / "people.csv"
 
 
 def get_existing_api_match_ids(supabase, season: str) -> set:
@@ -40,7 +43,7 @@ def get_existing_api_match_ids(supabase, season: str) -> set:
     return {r["match_id"] for r in res.data}
 
 
-def upsert_parsed(supabase, parsed: dict) -> None:
+def upsert_parsed(supabase, parsed: dict, resolver=None) -> None:
     """Upsert venue, teams, match, players, and player_match_stats from a parsed dict."""
     supabase.table("venues").upsert(parsed["venue"], on_conflict="venue_id").execute()
 
@@ -50,8 +53,11 @@ def upsert_parsed(supabase, parsed: dict) -> None:
     supabase.table("matches").upsert(parsed["match"], on_conflict="match_id").execute()
 
     stats = parsed["player_stats"]
-    # Auto-create any players not yet in the players table
-    missing = [{"player_id": s["player_id"], "name": s["player_id"]} for s in stats if s.get("player_id")]
+    missing = [
+        {"player_id": s["player_id"], "name": s["player_id"]}
+        for s in stats
+        if s.get("player_id") and (resolver is None or not resolver.is_canonical(s["player_id"]))
+    ]
     if missing:
         supabase.table("players").upsert(missing, on_conflict="player_id").execute()
 
@@ -60,9 +66,25 @@ def upsert_parsed(supabase, parsed: dict) -> None:
         supabase.table("player_match_stats").upsert(batch, on_conflict="player_id,match_id").execute()
 
 
+def _is_completed_and_past(match_row: dict) -> bool:
+    if not match_row.get("matchEnded"):
+        return False
+    if match_row.get("matchType", "").lower() != "t20":
+        return False
+
+    match_date_str = match_row.get("date", "")
+    try:
+        match_date = datetime.strptime(match_date_str, "%Y-%m-%d").date()
+    except (ValueError, TypeError):
+        return True
+
+    return match_date <= date.today()
+
+
 def sync(year: int = 2026, dry_run: bool = False) -> None:
     client   = CricketDataClient(API_KEY)
     supabase = create_client(SUPABASE_URL, SUPABASE_KEY)
+    resolver = PlayerResolver.from_csv(PEOPLE_CSV)
     season   = str(year)
 
     print(f"[sync] Finding IPL {year} series...")
@@ -70,7 +92,7 @@ def sync(year: int = 2026, dry_run: bool = False) -> None:
     print(f"[sync] Series ID: {series_id}")
 
     all_matches = client.get_series_matches(series_id)
-    completed   = [m for m in all_matches if m.get("matchEnded") is True and m.get("matchType", "").lower() == "t20"]
+    completed   = [m for m in all_matches if _is_completed_and_past(m)]
     print(f"[sync] {len(completed)} completed T20 matches in series (of {len(all_matches)} total)")
 
     existing_ids = get_existing_api_match_ids(supabase, season)
@@ -91,13 +113,13 @@ def sync(year: int = 2026, dry_run: bool = False) -> None:
         try:
             info      = client.get_match_info(mid)
             scorecard = client.get_match_scorecard(mid)
-            parsed    = parse_match(info, scorecard)
+            parsed    = parse_match(info, scorecard, resolver=resolver)
 
             if dry_run:
                 print(f"DRY RUN — would insert match {parsed['match']['match_id']} "
                       f"with {len(parsed['player_stats'])} player stat rows")
             else:
-                upsert_parsed(supabase, parsed)
+                upsert_parsed(supabase, parsed, resolver=resolver)
                 print(f"OK ({len(parsed['player_stats'])} players)")
 
             succeeded += 1

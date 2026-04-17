@@ -164,3 +164,82 @@ def test_match_season_and_league():
     assert m["league_id"] == "ipl"
     assert m["sport_id"] == "cricket"
     assert m["match_type"] == "T20"
+
+
+def test_parse_match_player_ids_have_no_spaces():
+    match_info = {
+        "id": "test123",
+        "venue": "Wankhede Stadium",
+        "teams": ["Mumbai Indians", "Chennai Super Kings"],
+        "matchWinner": "Mumbai Indians",
+        "tossWinner": "Chennai Super Kings",
+        "tossChoice": "field",
+        "status": "Mumbai Indians won by 6 wickets",
+        "date": "2026-03-22",
+    }
+    scorecard = {
+        "scorecard": [
+            {
+                "inning": "Chennai Super Kings Inning 1",
+                "batting": [
+                    {
+                        "batsman": {"name": "Ruturaj Gaikwad"},
+                        "r": 45,
+                        "b": 32,
+                        "4s": 5,
+                        "6s": 1,
+                        "dismissal-text": "c Rohit Sharma b Jasprit Bumrah",
+                    }
+                ],
+                "bowling": [
+                    {
+                        "bowler": {"name": "Jasprit Bumrah"},
+                        "o": "4",
+                        "r": 28,
+                        "w": 1,
+                        "m": 0,
+                        "eco": "7.00",
+                    }
+                ],
+            }
+        ]
+    }
+
+    from ingest.player_resolver import PlayerResolver
+
+    resolver = PlayerResolver.from_rows([])
+    result = parse_match(match_info, scorecard, resolver=resolver)
+    for stat in result["player_stats"]:
+        pid = stat["player_id"]
+        assert " " not in pid, f"player_id has spaces: {repr(pid)}"
+
+
+def test_parse_match_with_no_winner_sets_winner_null():
+    match_info = {
+        "id": "test-no-winner",
+        "venue": "Eden Gardens",
+        "teams": ["Kolkata Knight Riders", "Punjab Kings"],
+        "matchWinner": "No Winner",
+        "tossWinner": "Punjab Kings",
+        "tossChoice": "bat",
+        "status": "Match tied",
+        "date": "2026-04-01",
+    }
+    scorecard = {
+        "scorecard": [
+            {
+                "inning": "Kolkata Knight Riders Inning 1",
+                "batting": [
+                    {"batsman": "A Player", "dismissal": "not out", "r": 10, "b": 8, "4s": 1, "6s": 0}
+                ],
+                "bowling": [
+                    {"bowler": "B Bowler", "o": "1", "r": 10, "w": 0, "m": 0, "eco": "10.00"}
+                ],
+            }
+        ]
+    }
+
+    result = parse_match(match_info, scorecard)
+
+    assert result["match"]["result"] == "tie"
+    assert result["match"]["winner"] is None

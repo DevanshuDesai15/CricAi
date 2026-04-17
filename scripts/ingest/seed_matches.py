@@ -18,15 +18,18 @@ from tqdm import tqdm
 # Add parent to path so we can import parse_matches
 sys.path.insert(0, str(Path(__file__).parent))
 from parse_matches import parse_match_file
+from player_resolver import PlayerResolver
 
 load_dotenv(Path(__file__).parent.parent.parent / ".env.local")
 
 SUPABASE_URL = os.environ["NEXT_PUBLIC_SUPABASE_URL"]
 SUPABASE_KEY = os.environ["SUPABASE_SERVICE_ROLE_KEY"]
 DATA_DIR     = Path(__file__).parent.parent / "data" / "ipl"
+PEOPLE_CSV   = Path(__file__).parent.parent / "data" / "people.csv"
 
 def seed(limit=None, season=None) -> None:
     supabase = create_client(SUPABASE_URL, SUPABASE_KEY)
+    resolver = PlayerResolver.from_csv(PEOPLE_CSV)
     # Only process match data files, not _info files
     files = sorted([f for f in DATA_DIR.glob("*.csv") if "_info" not in f.name])
 
@@ -49,7 +52,7 @@ def seed(limit=None, season=None) -> None:
 
     for csv_path in tqdm(files):
         try:
-            parsed = parse_match_file(csv_path)
+            parsed = parse_match_file(csv_path, resolver=resolver)
             if not parsed:
                 continue
 
@@ -60,14 +63,11 @@ def seed(limit=None, season=None) -> None:
 
             supabase.table("matches").upsert(parsed["match"], on_conflict="match_id").execute()
 
-            # Auto-insert any players not yet in the players table.
-            # Cricsheet match files use player names (e.g. "B Kumar") as identifiers,
-            # which may not match the people.csv slugs seeded earlier.
             stats = parsed["player_stats"]
             missing_players = [
                 {"player_id": s["player_id"], "name": s["player_id"]}
                 for s in stats
-                if s.get("player_id")
+                if s.get("player_id") and not resolver.is_canonical(s["player_id"])
             ]
             if missing_players:
                 supabase.table("players").upsert(

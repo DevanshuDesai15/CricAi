@@ -96,7 +96,7 @@ def parse_info_file(info_path: Path) -> dict:
         pass
     return meta
 
-def parse_match_file(csv_path: Path) -> Optional[dict[str, Any]]:
+def parse_match_file(csv_path: Path, resolver=None) -> Optional[dict[str, Any]]:
     df = pd.read_csv(csv_path, low_memory=False)
     if df.empty:
         return None
@@ -164,10 +164,12 @@ def parse_match_file(csv_path: Path) -> Optional[dict[str, Any]]:
 
     for _, row in df.iterrows():
         innings_key = f"innings{int(row.get('innings', 1))}"
-        striker     = str(row.get("striker", ""))
-        bowler      = str(row.get("bowler", ""))
+        striker_raw = str(row.get("striker", ""))
+        bowler_raw  = str(row.get("bowler", ""))
         bat_team    = str(row.get("batting_team", ""))
         bowl_team   = str(row.get("bowling_team", ""))
+        striker     = resolver.resolve(striker_raw) if resolver and striker_raw != "nan" else striker_raw
+        bowler      = resolver.resolve(bowler_raw) if resolver and bowler_raw != "nan" else bowler_raw
         ball_raw = row.get("ball", 0)
         ball = 0.0 if (ball_raw is None or (isinstance(ball_raw, float) and pd.isna(ball_raw))) else float(ball_raw)
         phase       = get_phase(ball)
@@ -188,7 +190,14 @@ def parse_match_file(csv_path: Path) -> Optional[dict[str, Any]]:
             if runs_off_bat == 6: b["sixes"] += 1
 
         wicket_type = str(row.get("wicket_type", ""))
-        dismissed   = str(row.get("player_dismissed", ""))
+        dismissed_raw = str(row.get("player_dismissed", ""))
+        dismissed = resolver.resolve(dismissed_raw) if resolver and dismissed_raw != "nan" else dismissed_raw
+        fielder_raw = str(row.get("fielder", row.get("other_player_dismissed", "")))
+        fielder = (
+            resolver.resolve(fielder_raw)
+            if resolver and fielder_raw and fielder_raw != "nan"
+            else fielder_raw
+        )
         if dismissed and dismissed != "nan":
             if dismissed in batting:
                 batting[dismissed]["dismissed"] = True
@@ -199,19 +208,16 @@ def parse_match_file(csv_path: Path) -> Optional[dict[str, Any]]:
                 bowling[bowler]["dismissal_types"].append(wicket_type)
 
             if wicket_type == "caught":
-                fielder = str(row.get("fielder", row.get("other_player_dismissed", "")))
                 if fielder and fielder != "nan":
                     fielding.setdefault(fielder, {"catches": 0, "stumpings": 0,
                                                   "run_outs_direct": 0, "run_outs_indirect": 0})
                     fielding[fielder]["catches"] += 1
             elif wicket_type == "stumped":
-                fielder = str(row.get("fielder", row.get("other_player_dismissed", "")))
                 if fielder and fielder != "nan":
                     fielding.setdefault(fielder, {"catches": 0, "stumpings": 0,
                                                   "run_outs_direct": 0, "run_outs_indirect": 0})
                     fielding[fielder]["stumpings"] += 1
             elif wicket_type == "run out":
-                fielder = str(row.get("fielder", row.get("other_player_dismissed", "")))
                 if fielder and fielder != "nan":
                     fielding.setdefault(fielder, {"catches": 0, "stumpings": 0,
                                                   "run_outs_direct": 0, "run_outs_indirect": 0})

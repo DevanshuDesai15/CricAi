@@ -21,7 +21,30 @@ def _safe_float(val, default: float = 0.0) -> float:
         return default
 
 
-def _parse_dismissal(dismissal_str: str) -> Tuple[bool, Optional[str], Optional[str]]:
+def _resolve_player_id(raw_name: str, resolver=None) -> Optional[str]:
+    if resolver:
+        return resolver.resolve(raw_name)
+    return slugify(raw_name)
+
+
+def _normalize_winner(raw_winner: str, teams_raw: list[str]) -> Optional[str]:
+    winner = str(raw_winner or "").strip()
+    if not winner:
+        return None
+
+    normalized = slugify(winner)
+    valid_team_ids = {slugify(team) for team in teams_raw}
+    if normalized in {"no_winner", "none", "null"}:
+        return None
+    if normalized not in valid_team_ids:
+        return None
+    return normalized
+
+
+def _parse_dismissal(
+    dismissal_str: str,
+    resolver=None,
+) -> Tuple[bool, Optional[str], Optional[str]]:
     """
     Parse a cricketdata.org dismissal string into (dismissed, dismissal_type, fielder).
 
@@ -41,7 +64,7 @@ def _parse_dismissal(dismissal_str: str) -> Tuple[bool, Optional[str], Optional[
     # caught: "c <fielder> b <bowler>"
     m = re.match(r"^c (.+?) b .+$", s, re.IGNORECASE)
     if m:
-        return True, "caught", slugify(m.group(1).strip().lstrip("†"))
+        return True, "caught", _resolve_player_id(m.group(1).strip().lstrip("†"), resolver=resolver)
 
     # lbw: "lbw b <bowler>"
     if re.match(r"^lbw\b", s, re.IGNORECASE):
@@ -54,19 +77,19 @@ def _parse_dismissal(dismissal_str: str) -> Tuple[bool, Optional[str], Optional[
     # stumped: "st [†]<keeper> b <bowler>"
     m = re.match(r"^st [†]?(.+?) b .+$", s, re.IGNORECASE)
     if m:
-        return True, "stumped", slugify(m.group(1).strip())
+        return True, "stumped", _resolve_player_id(m.group(1).strip(), resolver=resolver)
 
     # run out: "run out (Fielder)" or "run out"
     m = re.match(r"^run out(?: \((.+?)\))?$", s, re.IGNORECASE)
     if m:
-        fielder = slugify(m.group(1).strip()) if m.group(1) else None
+        fielder = _resolve_player_id(m.group(1).strip(), resolver=resolver) if m.group(1) else None
         return True, "run out", fielder
 
     # retired / hit wicket / obstructing etc.
     return True, s.lower().split()[0], None
 
 
-def parse_match(match_info: dict, scorecard: dict) -> dict:
+def parse_match(match_info: dict, scorecard: dict, resolver=None) -> dict:
     """
     Transform cricketdata.org match_info + match_scorecard dicts into DB rows.
 
@@ -116,7 +139,7 @@ def parse_match(match_info: dict, scorecard: dict) -> dict:
         "venue_id":      venue_id,
         "team1_id":      slugify(teams_raw[0]) if len(teams_raw) > 0 else None,
         "team2_id":      slugify(teams_raw[1]) if len(teams_raw) > 1 else None,
-        "winner":        slugify(raw_winner) if raw_winner else None,
+        "winner":        _normalize_winner(raw_winner, teams_raw),
         "toss_winner":   slugify(raw_toss)   if raw_toss   else None,
         "toss_decision": match_info.get("tossChoice") or None,
         "result":        result,
@@ -146,18 +169,18 @@ def parse_match(match_info: dict, scorecard: dict) -> dict:
         for pos, row in enumerate(batting_rows, start=1):
             batsman_field = row.get("batsman", "")
             raw_name = batsman_field.get("name", "") if isinstance(batsman_field, dict) else batsman_field
-            pid       = slugify(raw_name)
+            pid = _resolve_player_id(raw_name, resolver=resolver)
             if not pid:
                 continue
 
             # API returns short 'dismissal' type and full 'dismissal-text'; use the full text
             dismissal_text = row.get("dismissal-text") or row.get("dismissal") or "not out"
-            dismissed, dtype, fielder_pid = _parse_dismissal(dismissal_text)
+            dismissed, dtype, fielder_pid = _parse_dismissal(dismissal_text, resolver=resolver)
 
             # If a catcher dict is present, prefer it over parsing the dismissal text
             catcher_field = row.get("catcher")
             if catcher_field and isinstance(catcher_field, dict):
-                fielder_pid = slugify(catcher_field.get("name", ""))
+                fielder_pid = _resolve_player_id(catcher_field.get("name", ""), resolver=resolver)
 
             player_team[pid] = team_id
             batting_order.setdefault(pid, pos)
@@ -184,7 +207,7 @@ def parse_match(match_info: dict, scorecard: dict) -> dict:
         for row in bowling_rows:
             bowler_field = row.get("bowler", "")
             raw_name = bowler_field.get("name", "") if isinstance(bowler_field, dict) else bowler_field
-            pid      = slugify(raw_name)
+            pid = _resolve_player_id(raw_name, resolver=resolver)
             if not pid:
                 continue
 
@@ -207,12 +230,12 @@ def parse_match(match_info: dict, scorecard: dict) -> dict:
     for innings in scorecard.get("scorecard", []):
         for row in innings.get("batting", []):
             dismissal_text = row.get("dismissal-text") or row.get("dismissal") or "not out"
-            _, dtype, _ = _parse_dismissal(dismissal_text)
+            _, dtype, _ = _parse_dismissal(dismissal_text, resolver=resolver)
             if dtype in ("lbw", "bowled"):
                 s = dismissal_text
                 bm = re.search(r" b (.+)$", s, re.IGNORECASE)
                 if bm:
-                    bowler_pid = slugify(bm.group(1).strip())
+                    bowler_pid = _resolve_player_id(bm.group(1).strip(), resolver=resolver)
                     if bowler_pid in bowling_stats:
                         bowling_stats[bowler_pid]["dismissal_types"].append(dtype)
 
