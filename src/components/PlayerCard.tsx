@@ -10,7 +10,7 @@ const ROLE_COLOR: Record<string, string> = {
   WK:   'bg-yellow-100 text-yellow-800',
 }
 
-export function PlayerCard({ player_id, name, primary_role, nationality }: PlayerSummary) {
+export function PlayerCard({ player_id, name, fantasy_role, country, is_overseas }: PlayerSummary) {
   return (
     <Link href={`/players/${encodeURIComponent(player_id)}`}>
       <Card className="hover:shadow-md transition-shadow cursor-pointer">
@@ -18,13 +18,16 @@ export function PlayerCard({ player_id, name, primary_role, nationality }: Playe
           <CardTitle className="text-base">{name}</CardTitle>
         </CardHeader>
         <CardContent className="flex gap-2 flex-wrap">
-          {primary_role && (
-            <Badge className={ROLE_COLOR[primary_role] ?? 'bg-gray-100 text-gray-800'}>
-              {primary_role}
+          {fantasy_role && (
+            <Badge className={ROLE_COLOR[fantasy_role] ?? 'bg-gray-100 text-gray-800'}>
+              {fantasy_role}
             </Badge>
           )}
-          {nationality && (
-            <span className="text-sm text-muted-foreground">{nationality}</span>
+          {country && (
+            <span className="text-sm text-muted-foreground">
+              {country}
+              {is_overseas ? ' · Overseas' : ''}
+            </span>
           )}
         </CardContent>
       </Card>

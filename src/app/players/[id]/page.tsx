@@ -26,8 +26,9 @@ export default async function PlayerProfilePage({
       <div>
         <h1 className="text-2xl font-bold">{player.name}</h1>
         <div className="flex gap-2 mt-2 flex-wrap">
-          {player.primary_role && <Badge>{player.primary_role}</Badge>}
-          {player.nationality && <Badge variant="outline">{player.nationality}</Badge>}
+          {player.fantasy_role && <Badge>{player.fantasy_role}</Badge>}
+          {player.country && <Badge variant="outline">{player.country}</Badge>}
+          {player.is_overseas && <Badge variant="secondary">Overseas</Badge>}
         </div>
       </div>
 

@@ -3,8 +3,10 @@ import { createServerSupabaseClient } from '@/lib/supabase-server'
 export interface PlayerSummary {
   player_id: string
   name: string
-  nationality: string | null
-  primary_role: string | null
+  country: string | null
+  fantasy_role: string | null
+  is_overseas: boolean | null
+  current_team_id: string | null
 }
 
 export interface PlayerProfile extends PlayerSummary {
@@ -37,7 +39,7 @@ export async function listPlayers(search?: string): Promise<PlayerSummary[]> {
   const supabase = await createServerSupabaseClient()
   let query = supabase
     .from('players')
-    .select('player_id, name, nationality, primary_role')
+    .select('player_id, name, country, fantasy_role, is_overseas, current_team_id')
     .order('name')
     .limit(100)
 
@@ -54,7 +56,7 @@ export async function getPlayer(playerId: string): Promise<PlayerProfile | null>
   const supabase = await createServerSupabaseClient()
   const { data, error } = await supabase
     .from('players')
-    .select('player_id, name, nationality, primary_role, batting_style, bowling_style, leagues_played')
+    .select('player_id, name, country, fantasy_role, is_overseas, current_team_id, batting_style, bowling_style, leagues_played')
     .eq('player_id', playerId)
     .single()
 

@@ -13,6 +13,7 @@ import {
 
 const NAV_ITEMS = [
   { href: '/dashboard', label: 'Dashboard', Icon: LayoutDashboard },
+  { href: '/team', label: 'My Team', Icon: Trophy },
 ]
 
 // ── Sidebar ───────────────────────────────────────────────────────────────
@@ -77,11 +78,11 @@ function Sidebar() {
           <div className="flex items-center gap-1.5 mb-1">
             <div className="w-1.5 h-1.5 rounded-full bg-brand-green shadow-[0_0_6px_var(--color-brand-green)] animate-pulse" />
             <div className="text-[10px] text-brand-blue font-bold tracking-widest uppercase">
-              Phase 3 Active
+              Phase 4 Active
             </div>
           </div>
           <div className="text-[11px] text-text-muted leading-tight">
-            Upcoming Match Predictions
+            Transfer Assistant
           </div>
         </div>
 
@@ -97,9 +98,9 @@ function Sidebar() {
 
 export default function CricAiLayout({ children }: { children: React.ReactNode }) {
   const pathname = usePathname()
-  const isLandingPage = pathname === '/'
+  const hideChrome = pathname === '/' || pathname === '/login'
 
-  if (isLandingPage) {
+  if (hideChrome) {
     return (
       <main className="flex-1 min-h-screen">
         {children}

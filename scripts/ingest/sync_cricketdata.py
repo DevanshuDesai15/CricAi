@@ -53,13 +53,29 @@ def upsert_parsed(supabase, parsed: dict, resolver=None) -> None:
     supabase.table("matches").upsert(parsed["match"], on_conflict="match_id").execute()
 
     stats = parsed["player_stats"]
+    # Only insert rows for players not yet in the DB at all.
+    # Use ignoreDuplicates=True so existing rows (which may have fantasy_role,
+    # current_team_id, is_overseas etc. from the external squad pipeline) are
+    # never clobbered by a bare-minimum stub.
     missing = [
-        {"player_id": s["player_id"], "name": s["player_id"]}
+        {
+            "player_id": s["player_id"],
+            # Use player_id as a fallback display name (resolver slug); the
+            # external squad pipeline or a manual patch will fill in a proper
+            # name later via the external_team_squad_player_mappings flow.
+            "name": s["player_id"],
+            "role": "unknown",
+        }
         for s in stats
         if s.get("player_id") and (resolver is None or not resolver.is_canonical(s["player_id"]))
     ]
     if missing:
-        supabase.table("players").upsert(missing, on_conflict="player_id").execute()
+        supabase.table("players").upsert(
+            missing,
+            on_conflict="player_id",
+            ignore_duplicates=True,
+        ).execute()
+        print(f"  Stubbed {len(missing)} unresolved player(s) (existing rows preserved)")
 
     for i in range(0, len(stats), 100):
         batch = stats[i : i + 100]

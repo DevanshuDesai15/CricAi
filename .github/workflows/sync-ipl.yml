@@ -37,6 +37,12 @@ jobs:
       - name: Install dependencies
         run: pip install -r scripts/requirements.txt
 
+      - name: Download Cricsheet people.csv
+        run: |
+          mkdir -p scripts/data
+          curl -fsSL https://cricsheet.org/register/people.csv -o scripts/data/people.csv
+          echo "Downloaded $(wc -l < scripts/data/people.csv) rows from cricsheet.org"
+
       - name: Run IPL sync
         env:
           CRICKETDATA_API_KEY:        ${{ secrets.CRICKETDATA_API_KEY }}
