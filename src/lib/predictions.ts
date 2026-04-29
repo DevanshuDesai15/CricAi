@@ -1,5 +1,6 @@
 import { execFile } from 'node:child_process'
 import { promisify } from 'node:util'
+import type { UpcomingMatch } from '@/lib/queries/matches'
 
 const execFileAsync = promisify(execFile)
 
@@ -23,6 +24,12 @@ export interface MatchPredictionPayload {
   predictions: MatchPredictionRow[]
 }
 
+export interface TransferPredictionScores {
+  scores: Map<string, number>
+  fixtures_considered: string[]
+  errors: string[]
+}
+
 export function getPythonErrorMessage(error: unknown): string {
   if (error instanceof Error) {
     const execError = error as PythonExecError
@@ -32,9 +39,13 @@ export function getPythonErrorMessage(error: unknown): string {
   return 'Prediction failed'
 }
 
+export function resolvePythonExecutable(): string {
+  return process.env.CRICAI_PYTHON_BIN ?? 'python3'
+}
+
 export async function getMatchPredictions(matchId: string): Promise<MatchPredictionPayload> {
   const { stdout } = await execFileAsync(
-    'python',
+    resolvePythonExecutable(),
     ['-m', 'ml.predict', '--match-id', matchId, '--format', 'json'],
     {
       cwd: `${process.cwd()}/scripts`,
@@ -43,4 +54,34 @@ export async function getMatchPredictions(matchId: string): Promise<MatchPredict
   )
 
   return JSON.parse(stdout) as MatchPredictionPayload
+}
+
+export async function getTransferPredictionScores(
+  upcomingMatches: UpcomingMatch[]
+): Promise<TransferPredictionScores> {
+  const scores = new Map<string, number>()
+  const fixturesConsidered: string[] = []
+  const errors: string[] = []
+
+  for (const match of upcomingMatches.slice(0, 1)) {
+    try {
+      const payload = await getMatchPredictions(match.match_id)
+      fixturesConsidered.push(match.match_id)
+
+      for (const row of payload.predictions) {
+        scores.set(
+          row.player_id,
+          (scores.get(row.player_id) ?? 0) + row.predicted_fantasy_points
+        )
+      }
+    } catch (error) {
+      errors.push(`${match.match_id}: ${getPythonErrorMessage(error)}`)
+    }
+  }
+
+  return {
+    scores,
+    fixtures_considered: fixturesConsidered,
+    errors,
+  }
 }

@@ -13,7 +13,7 @@ export async function listFantasyPlayers(search?: string): Promise<FantasyPlayer
     .select('player_id, name, fantasy_role, current_team_id, is_overseas, country, credit_value')
     .not('fantasy_role', 'is', null)
     .order('name')
-    .limit(200)
+    .limit(1000)
 
   if (search) {
     query = query.ilike('name', `%${search}%`)

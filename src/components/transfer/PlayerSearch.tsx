@@ -4,6 +4,19 @@ import { useDeferredValue, useMemo, useState } from 'react'
 import { Input } from '@/components/ui/input'
 import type { FantasyPlayerSearchResult } from '@/lib/queries/fantasy-players'
 
+/**
+ * Matches a player name against a query using token-prefix logic.
+ * Each query word must be a prefix of at least one name word.
+ * "V Kohli" → ["v", "kohli"] both match tokens in "Virat Kohli" ✓
+ * "Kohli"   → ["kohli"] matches "kohli" in "Virat Kohli" ✓
+ * "Virat"   → ["virat"] matches "virat" ✓
+ */
+function matchesTokens(name: string, query: string): boolean {
+  const nameTokens = name.toLowerCase().split(/\s+/)
+  const queryTokens = query.split(/\s+/).filter(Boolean)
+  return queryTokens.every((qt) => nameTokens.some((nt) => nt.startsWith(qt)))
+}
+
 interface PlayerSearchProps {
   availablePlayers: FantasyPlayerSearchResult[]
   selectedPlayerIds: string[]
@@ -19,13 +32,14 @@ export function PlayerSearch({ availablePlayers, selectedPlayerIds, onAdd }: Pla
 
     return availablePlayers
       .filter((player) => !selectedPlayerIds.includes(player.player_id))
-      .filter((player) => (
-        normalized.length === 0
-          ? true
-          : player.name.toLowerCase().includes(normalized)
+      .filter((player) => {
+        if (normalized.length === 0) return true
+        return (
+          matchesTokens(player.name, normalized)
             || player.country?.toLowerCase().includes(normalized)
             || player.current_team_id?.toLowerCase().includes(normalized)
-      ))
+        )
+      })
       .slice(0, 20)
   }, [availablePlayers, deferredQuery, selectedPlayerIds])
 

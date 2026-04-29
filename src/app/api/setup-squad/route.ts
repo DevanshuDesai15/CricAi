@@ -5,6 +5,7 @@ import { saveTransferState, saveUserSquad } from '@/lib/queries/user-squad'
 import { validateSquad } from '@/lib/squad-validator'
 
 interface SetupSquadRequestBody {
+  squadName: string
   players: Array<{
     player_id: string
     is_captain: boolean
@@ -15,6 +16,7 @@ interface SetupSquadRequestBody {
 }
 
 export async function POST(request: Request) {
+  try {
   const supabase = await createServerSupabaseClient()
   const {
     data: { user },
@@ -24,7 +26,19 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   }
 
-  const { players, transfersUsed, boostersUsed } = await request.json() as SetupSquadRequestBody
+  // Ensure a profiles row exists for this user. Users who signed up before the
+  // handle_new_user trigger was applied won't have one, which breaks the FK on
+  // user_squads.user_id.
+  await supabase.from('profiles').upsert(
+    { id: user.id, name: user.email ?? '' },
+    { onConflict: 'id', ignoreDuplicates: true }
+  )
+
+  const { squadName, players, transfersUsed, boostersUsed } = await request.json() as SetupSquadRequestBody
+
+  if (typeof squadName !== 'string' || squadName.trim().length === 0) {
+    return NextResponse.json({ error: 'Squad name is required.' }, { status: 400 })
+  }
 
   if (!Array.isArray(players)) {
     return NextResponse.json({ error: 'Invalid squad payload.' }, { status: 400 })
@@ -63,7 +77,7 @@ export async function POST(request: Request) {
     )
   }
 
-  await saveUserSquad(user.id, players)
+  await saveUserSquad(user.id, squadName.trim(), players)
   await saveTransferState(user.id, {
     transfers_used: Number.isFinite(transfersUsed) ? Math.max(0, Math.min(160, transfersUsed)) : 0,
     boosters_used: Array.isArray(boostersUsed)
@@ -72,4 +86,10 @@ export async function POST(request: Request) {
   })
 
   return NextResponse.json({ ok: true })
+
+  } catch (err) {
+    console.error('[setup-squad]', err)
+    const message = err instanceof Error ? err.message : 'Unexpected server error.'
+    return NextResponse.json({ error: message }, { status: 500 })
+  }
 }

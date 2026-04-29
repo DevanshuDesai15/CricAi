@@ -225,6 +225,8 @@ function MatchCard({ match }: {
 
 // ── Standings table ───────────────────────────────────────────────────────
 
+const STANDINGS_GRID_COLUMNS = '26px 28px minmax(0, 1fr) 30px 34px 34px 42px'
+
 function StandingsRow({
   team, rank, maxWins,
 }: {
@@ -236,7 +238,10 @@ function StandingsRow({
   const isPlayoff = rank <= 4
 
   return (
-    <div className={`grid grid-cols-[26px_28px_1fr_34px_34px_42px] gap-1.5 px-4 py-2.5 items-center border-b border-border-subtle transition-colors ${isPlayoff ? 'bg-brand-blue-dim/20' : 'hover:bg-white/[0.01]'}`}>
+    <div
+      className={`grid gap-1.5 px-4 py-2.5 items-center border-b border-border-subtle transition-colors ${isPlayoff ? 'bg-brand-blue-dim/20' : 'hover:bg-white/[0.01]'}`}
+      style={{ gridTemplateColumns: STANDINGS_GRID_COLUMNS }}
+    >
       {/* Rank */}
       <span className={`font-fira-code text-[11px] ${isPlayoff ? 'text-brand-blue font-bold' : 'text-text-dim font-normal'}`}>
         {rank}
@@ -260,6 +265,11 @@ function StandingsRow({
           />
         </div>
       </div>
+
+      {/* P */}
+      <span className="text-center font-fira-code text-[12px] text-text-muted">
+        {team.played}
+      </span>
 
       {/* W */}
       <span className="text-center font-fira-code text-[13px] font-bold text-brand-green">
@@ -376,8 +386,8 @@ export default async function DashboardPage() {
               {/* Legend */}
               <div className="flex gap-4 justify-end mt-2 pr-2">
                 {[
-                  { label: 'Wins', color: '#6366f1' },
-                  { label: 'Losses', color: 'rgba(239, 68, 68, 0.3)' },
+                  { label: 'Wins', color: 'linear-gradient(90deg, #6366f1, #22c55e)' },
+                  { label: 'Losses', color: '#f87171' },
                 ].map(({ label, color }) => (
                   <div key={label} className="flex items-center gap-1.5">
                     <div className="w-2 h-2 rounded-sm" style={{ background: color }} />
@@ -422,10 +432,14 @@ export default async function DashboardPage() {
           <SectionHeader title="Points Table" tag={season ?? '2026'} icon={Trophy} />
           <div className="bg-card border border-border rounded-xl overflow-hidden">
             {/* Table header */}
-            <div className="grid grid-cols-[26px_28px_1fr_34px_34px_42px] gap-1.5 px-4 py-3 border-b border-border text-[10px] text-text-dim font-bold tracking-widest uppercase">
+            <div
+              className="grid gap-1.5 px-4 py-3 border-b border-border text-[10px] text-text-dim font-bold tracking-widest uppercase"
+              style={{ gridTemplateColumns: STANDINGS_GRID_COLUMNS }}
+            >
               <span>#</span>
               <span />
               <span>Team</span>
+              <span className="text-center">P</span>
               <span className="text-center">W</span>
               <span className="text-center">L</span>
               <span className="text-center">Pts</span>

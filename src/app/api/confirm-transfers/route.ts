@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server'
 import { createServerSupabaseClient } from '@/lib/supabase-server'
 import { getFantasyPlayersByIds } from '@/lib/queries/fantasy-players'
-import { getTransferState, saveTransferState, saveUserSquad } from '@/lib/queries/user-squad'
+import { getTransferState, saveTransferState, updateSquadPlayers } from '@/lib/queries/user-squad'
 import { validateSquad } from '@/lib/squad-validator'
 
 interface ConfirmTransfersBody {
@@ -55,7 +55,7 @@ export async function POST(request: Request) {
   }
 
   const transferState = await getTransferState(user.id)
-  await saveUserSquad(user.id, players)
+  await updateSquadPlayers(user.id, players)
   await saveTransferState(user.id, {
     transfers_used: Math.min(160, transferState.transfers_used + Math.max(0, Math.trunc(transfersApplied))),
     boosters_used: transferState.boosters_used,

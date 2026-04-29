@@ -216,6 +216,56 @@ def test_resolve_match_player_pool_uses_recent_xi_for_future_match():
     assert {row["match_id"] for row in resolved["rows"]} == {"future_3"}
 
 
+def test_resolve_match_player_pool_falls_back_to_current_team_roster():
+    match_row = {"match_id": "future_4", "match_date": "2026-04-10", "team1_id": "mi", "team2_id": "csk"}
+    matches_df = pd.DataFrame(
+        [
+            {"match_id": "mi_last", "match_date": "2026-04-01", "team1_id": "mi", "team2_id": "rr", "winner": "mi"},
+            {"match_id": "csk_last", "match_date": "2026-04-02", "team1_id": "csk", "team2_id": "gt", "winner": "csk"},
+        ]
+    )
+    stats_df = pd.DataFrame(
+        [
+            {"match_id": "mi_last", "team_id": "mi", "player_id": "mi_1", "batting_position": 1},
+            {"match_id": "csk_last", "team_id": "csk", "player_id": "csk_1", "batting_position": 1},
+        ]
+    )
+    players_df = pd.DataFrame(
+        [
+            {
+                "player_id": f"mi_{idx}",
+                "name": f"MI {idx}",
+                "current_team_id": "mi",
+                "fantasy_role": "BAT",
+            }
+            for idx in range(1, 12)
+        ]
+        + [
+            {
+                "player_id": f"csk_{idx}",
+                "name": f"CSK {idx}",
+                "current_team_id": "csk",
+                "fantasy_role": "BOWL",
+            }
+            for idx in range(1, 12)
+        ]
+    )
+
+    resolved = resolve_match_player_pool(
+        match_row=match_row,
+        compositions_df=pd.DataFrame(),
+        matches_df=matches_df,
+        stats_df=stats_df,
+        players_df=players_df,
+    )
+
+    assert resolved["source"] == "current_team_roster"
+    assert {row["player_id"] for row in resolved["rows"]} == {f"mi_{idx}" for idx in range(1, 12)} | {
+        f"csk_{idx}" for idx in range(1, 12)
+    }
+    assert {row["match_id"] for row in resolved["rows"]} == {"future_4"}
+
+
 def test_resolve_match_player_pool_normalizes_match_id_before_composition_filter():
     match_row = {"match_id": "200", "match_date": "2026-04-10", "team1_id": "mi", "team2_id": "csk"}
     compositions_df = pd.DataFrame(

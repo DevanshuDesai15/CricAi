@@ -28,6 +28,7 @@ type SquadSelection = FantasyPlayerSearchResult & {
 
 export function SetupDrawer({ availablePlayers }: SetupDrawerProps) {
   const [step, setStep] = useState(1)
+  const [squadName, setSquadName] = useState('')
   const [squad, setSquad] = useState<SquadSelection[]>([])
   const [transfersUsed, setTransfersUsed] = useState(0)
   const [boostersUsed, setBoostersUsed] = useState<string[]>([])
@@ -82,27 +83,32 @@ export function SetupDrawer({ availablePlayers }: SetupDrawerProps) {
     }
 
     startTransition(async () => {
-      const response = await fetch('/api/setup-squad', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          players: squad.map((player) => ({
-            player_id: player.player_id,
-            is_captain: player.is_captain,
-            is_vice_captain: player.is_vice_captain,
-          })),
-          transfersUsed,
-          boostersUsed,
-        }),
-      })
+      try {
+        const response = await fetch('/api/setup-squad', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            squadName: squadName.trim(),
+            players: squad.map((player) => ({
+              player_id: player.player_id,
+              is_captain: player.is_captain,
+              is_vice_captain: player.is_vice_captain,
+            })),
+            transfersUsed,
+            boostersUsed,
+          }),
+        })
 
-      if (!response.ok) {
-        const payload = await response.json().catch(() => null)
-        setError(payload?.error ?? 'Failed to save squad.')
-        return
+        if (!response.ok) {
+          const payload = await response.json().catch(() => null)
+          setError(payload?.error ?? 'Failed to save squad.')
+          return
+        }
+
+        router.refresh()
+      } catch {
+        setError('Network error — check your connection and try again.')
       }
-
-      router.refresh()
     })
   }
 
@@ -129,6 +135,20 @@ export function SetupDrawer({ availablePlayers }: SetupDrawerProps) {
       <div className="space-y-6 p-6">
         {step === 1 && (
           <>
+            <div>
+              <label className="mb-1.5 block text-xs font-semibold uppercase tracking-[0.2em] text-muted-foreground">
+                Team name
+              </label>
+              <input
+                type="text"
+                value={squadName}
+                onChange={(event) => { setSquadName(event.target.value); setError(null) }}
+                placeholder="e.g. Royal Smashers XI"
+                maxLength={40}
+                className="w-full rounded-xl border border-border bg-background px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-brand-blue/40"
+              />
+            </div>
+
             <div className="flex flex-wrap gap-4 text-sm">
               <span className={squad.length === 11 ? 'text-brand-green font-semibold' : ''}>
                 {squad.length} / 11 players
@@ -261,6 +281,11 @@ export function SetupDrawer({ availablePlayers }: SetupDrawerProps) {
             <button
               type="button"
               onClick={() => {
+                if (step === 1 && squadName.trim().length === 0) {
+                  setError('Give your team a name before moving on.')
+                  return
+                }
+
                 if (step === 1 && squad.length !== 11) {
                   setError('Select exactly 11 players before moving on.')
                   return

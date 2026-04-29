@@ -138,7 +138,53 @@ def infer_recent_team_xi(team_id: str, target_match_date: str, matches_df: pd.Da
     ]
 
 
-def resolve_match_player_pool(match_row: dict, compositions_df: pd.DataFrame, matches_df: pd.DataFrame, stats_df: pd.DataFrame):
+def infer_current_team_roster(team_id: str, players_df: pd.DataFrame):
+    players = _to_frame(players_df)
+    if players.empty:
+        raise InferenceDataError("insufficient_player_pool", f"No current roster found for team: {team_id}")
+
+    for column in ["player_id", "current_team_id", "fantasy_role", "role", "name"]:
+        if column not in players.columns:
+            players[column] = None
+
+    normalized_team_id = str(team_id).strip()
+    players["current_team_id"] = _normalize_id_series(players["current_team_id"])
+    roster = players[
+        (players["current_team_id"] == normalized_team_id)
+        & players["player_id"].notna()
+    ].copy()
+
+    if "fantasy_role" in roster.columns:
+        roster = roster[roster["fantasy_role"].notna()]
+
+    if roster.empty or len(roster) < 11:
+        raise InferenceDataError("insufficient_player_pool", f"No current roster found for team: {team_id}")
+
+    role_order = {"WK": 0, "BAT": 1, "AR": 2, "BOWL": 3}
+    roster["role_sort"] = roster["fantasy_role"].map(role_order).fillna(9)
+    roster["name_sort"] = roster["name"].fillna(roster["player_id"]).astype(str)
+    roster = roster.sort_values(["role_sort", "name_sort", "player_id"]).drop_duplicates(
+        subset=["player_id"], keep="first"
+    )
+
+    return [
+        {
+            "match_id": None,
+            "team_id": normalized_team_id,
+            "player_id": row["player_id"],
+            "batting_order": index,
+        }
+        for index, (_, row) in enumerate(roster.iterrows(), start=1)
+    ]
+
+
+def resolve_match_player_pool(
+    match_row: dict,
+    compositions_df: pd.DataFrame,
+    matches_df: pd.DataFrame,
+    stats_df: pd.DataFrame,
+    players_df=None,
+):
     compositions = _to_frame(compositions_df)
     match_id = str(match_row["match_id"]).strip()
     match_row = {**match_row, "match_id": match_id}
@@ -161,13 +207,22 @@ def resolve_match_player_pool(match_row: dict, compositions_df: pd.DataFrame, ma
                 "rows": direct[["match_id", "team_id", "player_id", "batting_order"]].to_dict(orient="records"),
             }
 
-    team1_rows = infer_recent_team_xi(match_row["team1_id"], match_row["match_date"], matches_df, stats_df)
-    team2_rows = infer_recent_team_xi(match_row["team2_id"], match_row["match_date"], matches_df, stats_df)
+    try:
+        team1_rows = infer_recent_team_xi(match_row["team1_id"], match_row["match_date"], matches_df, stats_df)
+        team2_rows = infer_recent_team_xi(match_row["team2_id"], match_row["match_date"], matches_df, stats_df)
+        source = "recent_xi"
+    except InferenceDataError as recent_error:
+        if players_df is None:
+            raise recent_error
+        team1_rows = infer_current_team_roster(match_row["team1_id"], players_df)
+        team2_rows = infer_current_team_roster(match_row["team2_id"], players_df)
+        source = "current_team_roster"
+
     rows = team1_rows + team2_rows
     for row in rows:
         row["match_id"] = match_id
 
-    return {"source": "recent_xi", "rows": rows}
+    return {"source": source, "rows": rows}
 
 
 def finalize_feature_frame(df: pd.DataFrame) -> pd.DataFrame:
@@ -257,7 +312,7 @@ def build_historical_training_frame(league_id: str = "ipl") -> pd.DataFrame:
         .eq("league_id", league_id)
     )
     player_rows = fetch_all_rows(
-        supabase.table("players").select("player_id,name,role")
+        supabase.table("players").select("player_id,name,role,fantasy_role,current_team_id")
     )
     recent_rows = fetch_all_rows(
         supabase.table("player_recent_form")
@@ -322,7 +377,7 @@ def build_match_inference_frame(match_id: str, league_id: str = "ipl") -> pd.Dat
         .select("match_id,team_id,player_id,batting_position")
     )
     player_rows = fetch_all_rows(
-        supabase.table("players").select("player_id,name,role")
+        supabase.table("players").select("player_id,name,role,fantasy_role,current_team_id")
     )
     recent_rows = fetch_all_rows(
         supabase.table("player_recent_form")
@@ -349,6 +404,7 @@ def build_match_inference_frame(match_id: str, league_id: str = "ipl") -> pd.Dat
         compositions_df=pd.DataFrame(composition_rows),
         matches_df=pd.DataFrame(all_match_rows),
         stats_df=pd.DataFrame(stats_rows),
+        players_df=pd.DataFrame(player_rows),
     )
 
     base = pd.DataFrame(resolved_pool["rows"])

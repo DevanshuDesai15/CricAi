@@ -6,6 +6,12 @@ export interface UserSquadPlayer extends FantasySquadPlayer {
   credit_value: number
 }
 
+export interface UserSquadFull {
+  id: number
+  name: string
+  players: UserSquadPlayer[]
+}
+
 export interface UserSquadSaveInput {
   player_id: string
   is_captain: boolean
@@ -17,73 +23,121 @@ export interface TransferState {
   boosters_used: string[]
 }
 
-interface UserSquadRow {
-  is_captain: boolean | null
-  is_vice_captain: boolean | null
-  players: Array<{
-    player_id: string
-    name: string
-    fantasy_role: FantasyRole | null
-    current_team_id: string | null
-    credit_value: number | string | null
-    is_overseas: boolean | null
-    country: string | null
-  }> | null
+// ── Internal row types ────────────────────────────────────────────────────
+
+interface PlayerRow {
+  player_id: string
+  name: string
+  fantasy_role: FantasyRole | null
+  current_team_id: string | null
+  credit_value: number | string | null
+  is_overseas: boolean | null
+  country: string | null
 }
 
-export async function getUserSquad(userId: string): Promise<UserSquadPlayer[]> {
+interface UserSquadPlayerRow {
+  is_captain: boolean | null
+  is_vice_captain: boolean | null
+  players: PlayerRow | PlayerRow[] | null
+}
+
+interface UserSquadRow {
+  id: number
+  name: string
+  user_squad_players: UserSquadPlayerRow[] | null
+}
+
+// ── Queries ───────────────────────────────────────────────────────────────
+
+export async function getUserSquad(userId: string): Promise<UserSquadFull | null> {
   const supabase = await createServerSupabaseClient()
   const { data, error } = await supabase
     .from('user_squads')
     .select(`
-      is_captain,
-      is_vice_captain,
-      players!inner(
-        player_id,
-        name,
-        fantasy_role,
-        current_team_id,
-        credit_value,
-        is_overseas,
-        country
+      id,
+      name,
+      user_squad_players(
+        is_captain,
+        is_vice_captain,
+        players(player_id, name, fantasy_role, current_team_id, credit_value, is_overseas, country)
       )
     `)
     .eq('user_id', userId)
+    .maybeSingle()
 
   if (error) throw error
+  if (!data) return null
 
-  return ((data ?? []) as UserSquadRow[])
-    .filter((row) => row.players?.[0] !== undefined)
-    .map((row) => ({
-      player_id: row.players![0].player_id,
-      name: row.players![0].name,
-      fantasy_role: row.players![0].fantasy_role,
-      current_team_id: row.players![0].current_team_id,
-      credit_value: Number(row.players![0].credit_value ?? 8),
-      is_overseas: row.players![0].is_overseas,
-      country: row.players![0].country,
-      is_captain: Boolean(row.is_captain),
-      is_vice_captain: Boolean(row.is_vice_captain),
-    }))
+  return mapUserSquadRow(data as unknown as UserSquadRow)
 }
 
-export async function saveUserSquad(userId: string, players: UserSquadSaveInput[]): Promise<void> {
+export function mapUserSquadRow(row: UserSquadRow): UserSquadFull {
+  const players: UserSquadPlayer[] = (row.user_squad_players ?? [])
+    .flatMap((squadPlayer) => {
+      const player = getJoinedPlayer(squadPlayer.players)
+      if (!player) return []
+
+      return [{
+        player_id: player.player_id,
+        name: player.name,
+        fantasy_role: player.fantasy_role,
+        current_team_id: player.current_team_id,
+        credit_value: Number(player.credit_value ?? 8),
+        is_overseas: player.is_overseas,
+        country: player.country,
+        is_captain: Boolean(squadPlayer.is_captain),
+        is_vice_captain: Boolean(squadPlayer.is_vice_captain),
+      }]
+    })
+
+  return { id: row.id, name: row.name, players }
+}
+
+function getJoinedPlayer(players: PlayerRow | PlayerRow[] | null): PlayerRow | null {
+  if (Array.isArray(players)) return players[0] ?? null
+  return players
+}
+
+// ── Mutations ─────────────────────────────────────────────────────────────
+
+/**
+ * Creates or renames the squad and replaces all players.
+ * Called from /api/setup-squad on first save.
+ */
+export async function saveUserSquad(
+  userId: string,
+  squadName: string,
+  players: UserSquadSaveInput[]
+): Promise<void> {
   const supabase = await createServerSupabaseClient()
 
-  const { error: deleteError } = await supabase
+  const { data: squadRow, error: squadError } = await supabase
     .from('user_squads')
+    .upsert(
+      { user_id: userId, name: squadName, updated_at: new Date().toISOString() },
+      { onConflict: 'user_id' }
+    )
+    .select('id')
+    .single()
+
+  if (squadError) throw squadError
+
+  const squadId = squadRow.id
+
+  const { error: deleteError } = await supabase
+    .from('user_squad_players')
     .delete()
-    .eq('user_id', userId)
+    .eq('squad_id', squadId)
 
   if (deleteError) throw deleteError
 
   if (players.length === 0) return
 
   const { error: insertError } = await supabase
-    .from('user_squads')
+    .from('user_squad_players')
     .insert(
       players.map((player) => ({
-        user_id: userId,
+        squad_id: squadId,
         player_id: player.player_id,
         is_captain: player.is_captain,
         is_vice_captain: player.is_vice_captain,
@@ -92,6 +146,61 @@ export async function saveUserSquad(userId: string, players: UserSquadSaveInput[
 
   if (insertError) throw insertError
 }
+
+/**
+ * Updates only the player rows for an existing squad.
+ * Called from /api/confirm-transfers — preserves the squad name.
+ */
+export async function updateSquadPlayers(
+  userId: string,
+  players: UserSquadSaveInput[]
+): Promise<void> {
+  const supabase = await createServerSupabaseClient()
+
+  const { data: squadRow, error: lookupError } = await supabase
+    .from('user_squads')
+    .select('id')
+    .eq('user_id', userId)
+    .single()
+
+  if (lookupError) throw lookupError
+
+  const squadId = squadRow.id
+
+  const { error: deleteError } = await supabase
+    .from('user_squad_players')
+    .delete()
+    .eq('squad_id', squadId)
+
+  if (deleteError) throw deleteError
+
+  if (players.length === 0) return
+
+  const { error: insertError } = await supabase
+    .from('user_squad_players')
+    .insert(
+      players.map((player) => ({
+        squad_id: squadId,
+        player_id: player.player_id,
+        is_captain: player.is_captain,
+        is_vice_captain: player.is_vice_captain,
+      }))
+    )
+
+  if (insertError) throw insertError
+}
+
+export async function updateUserSquadName(userId: string, squadName: string): Promise<void> {
+  const supabase = await createServerSupabaseClient()
+  const { error } = await supabase
+    .from('user_squads')
+    .update({ name: squadName, updated_at: new Date().toISOString() })
+    .eq('user_id', userId)
+
+  if (error) throw error
+}
+
+// ── Transfer state ────────────────────────────────────────────────────────
 
 export async function getTransferState(userId: string): Promise<TransferState> {
   const supabase = await createServerSupabaseClient()
@@ -130,9 +239,17 @@ export async function saveTransferState(userId: string, state: TransferState): P
 
 export async function resetUserSquad(userId: string): Promise<void> {
   const supabase = await createServerSupabaseClient()
-  const { error: squadError } = await supabase.from('user_squads').delete().eq('user_id', userId)
-  if (squadError) throw squadError
 
-  const { error: transferError } = await supabase.from('user_transfer_state').delete().eq('user_id', userId)
-  if (transferError) throw transferError
+  const { data: squadRow } = await supabase
+    .from('user_squads')
+    .select('id')
+    .eq('user_id', userId)
+    .maybeSingle()
+
+  if (squadRow) {
+    await supabase.from('user_squad_players').delete().eq('squad_id', squadRow.id)
+    await supabase.from('user_squads').delete().eq('id', squadRow.id)
+  }
+
+  await supabase.from('user_transfer_state').delete().eq('user_id', userId)
 }

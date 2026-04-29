@@ -1,13 +1,37 @@
 'use client'
 
-import { usePathname } from 'next/navigation'
+import { usePathname, useRouter } from 'next/navigation'
 import Link from 'next/link'
 import React from 'react'
-import { 
-  LayoutDashboard, 
-  Activity, 
-  Trophy 
+import {
+  LayoutDashboard,
+  Activity,
+  Trophy,
+  LogOut,
 } from 'lucide-react'
+import { createClient } from '@/lib/supabase'
+
+// ── Sign out ──────────────────────────────────────────────────────────────
+
+function SignOutButton() {
+  const router = useRouter()
+
+  async function handleSignOut() {
+    const supabase = createClient()
+    await supabase.auth.signOut()
+    router.push('/login')
+  }
+
+  return (
+    <button
+      onClick={handleSignOut}
+      className="flex items-center gap-2 w-full px-3 py-2 rounded-lg text-sm font-medium text-text-muted hover:bg-card hover:text-text-secondary transition-colors"
+    >
+      <LogOut className="w-4 h-4 shrink-0" />
+      Sign out
+    </button>
+  )
+}
 
 // ── Nav items ─────────────────────────────────────────────────────────────
 
@@ -72,6 +96,8 @@ function Sidebar() {
       <div className="p-4 pb-6">
         {/* Divider */}
         <div className="h-px bg-border mb-4" />
+
+        <SignOutButton />
 
         {/* Phase badge */}
         <div className="bg-brand-blue-dim border border-brand-blue-dim/20 rounded-lg p-2.5">

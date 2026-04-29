@@ -1,7 +1,7 @@
 'use client'
 
 import {
-  BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Cell,
+  BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Cell, CartesianGrid,
 } from 'recharts'
 
 interface ChartEntry {
@@ -25,46 +25,62 @@ export function TeamPerformanceChart({ data }: { data: ChartEntry[] }) {
   }
 
   return (
-    <div style={{ height: '160px' }}>
+    <div style={{ height: '220px' }}>
       <ResponsiveContainer width="100%" height="100%">
         <BarChart
           data={data}
-          barSize={10}
-          barGap={3}
-          margin={{ top: 4, right: 8, bottom: 0, left: -28 }}
+          barSize={14}
+          barGap={4}
+          margin={{ top: 10, right: 18, bottom: 8, left: -10 }}
         >
+          <CartesianGrid
+            vertical={false}
+            stroke="rgba(148, 163, 184, 0.12)"
+            strokeDasharray="3 6"
+          />
           <XAxis
             dataKey="name"
-            tick={{ fill: '#475569', fontSize: 10, fontFamily: "'Fira Code', monospace" }}
+            tick={{ fill: '#94a3b8', fontSize: 11, fontFamily: "'Fira Code', monospace" }}
             axisLine={false}
             tickLine={false}
+            dy={8}
           />
           <YAxis
-            tick={{ fill: '#475569', fontSize: 10, fontFamily: "'Fira Code', monospace" }}
+            tick={{ fill: '#94a3b8', fontSize: 11, fontFamily: "'Fira Code', monospace" }}
             axisLine={false}
             tickLine={false}
             allowDecimals={false}
+            width={32}
           />
           <Tooltip
-            cursor={{ fill: 'rgba(99,102,241,0.05)' }}
+            cursor={{ fill: 'rgba(99, 102, 241, 0.10)' }}
             contentStyle={{
-              background: '#16161d',
-              border: '1px solid #1e1e32',
+              background: '#11131d',
+              border: '1px solid rgba(148, 163, 184, 0.22)',
               borderRadius: '8px',
+              boxShadow: '0 18px 45px rgba(0, 0, 0, 0.35)',
               fontSize: '12px',
               fontFamily: "'Fira Code', monospace",
-              color: '#f1f5f9',
             }}
-            labelStyle={{ color: '#94a3b8', marginBottom: '4px' }}
+            labelStyle={{
+              color: '#e2e8f0',
+              fontWeight: 700,
+              marginBottom: '8px',
+            }}
+            itemStyle={{
+              color: '#cbd5e1',
+              paddingTop: '4px',
+            }}
+            separator=": "
           />
           <Bar dataKey="wins" name="Wins" radius={[3, 3, 0, 0]}>
             {data.map((entry, index) => (
-              <Cell key={`win-${index}`} fill={entry.color} fillOpacity={0.9} />
+              <Cell key={`win-${index}`} fill={entry.color} fillOpacity={1} />
             ))}
           </Bar>
           <Bar dataKey="losses" name="Losses" radius={[3, 3, 0, 0]}>
             {data.map((entry, index) => (
-              <Cell key={`loss-${index}`} fill="#ef4444" fillOpacity={0.35} />
+              <Cell key={`loss-${index}`} fill="#f87171" fillOpacity={0.7} />
             ))}
           </Bar>
         </BarChart>

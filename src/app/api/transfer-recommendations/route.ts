@@ -2,7 +2,7 @@ import { NextResponse } from 'next/server'
 import { listUpcomingMatches } from '@/lib/queries/matches'
 import { listFantasyPlayers } from '@/lib/queries/fantasy-players'
 import { getTransferState, getUserSquad } from '@/lib/queries/user-squad'
-import { getMatchPredictions } from '@/lib/predictions'
+import { getTransferPredictionScores } from '@/lib/predictions'
 import { generateRecommendations, type PlayerWithPrediction } from '@/lib/recommendation-engine'
 import { createServerSupabaseClient } from '@/lib/supabase-server'
 
@@ -16,31 +16,24 @@ export async function POST() {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   }
 
-  const [squad, transferState, allPlayers, upcomingMatches] = await Promise.all([
+  const [squadData, transferState, allPlayers, upcomingMatches] = await Promise.all([
     getUserSquad(user.id),
     getTransferState(user.id),
     listFantasyPlayers(),
     listUpcomingMatches('ipl', 3),
   ])
 
+  const squad = squadData?.players ?? []
+
   if (squad.length !== 11) {
     return NextResponse.json({ error: 'Squad incomplete' }, { status: 400 })
   }
 
-  const predictionScores = new Map<string, number>()
+  const predictionInput = await getTransferPredictionScores(upcomingMatches)
+  const predictionScores = predictionInput.scores
 
-  for (const match of upcomingMatches) {
-    try {
-      const payload = await getMatchPredictions(match.match_id)
-      for (const row of payload.predictions) {
-        predictionScores.set(
-          row.player_id,
-          (predictionScores.get(row.player_id) ?? 0) + row.predicted_fantasy_points
-        )
-      }
-    } catch {
-      // Ignore per-match prediction failures so the route can degrade cleanly.
-    }
+  if (predictionInput.errors.length > 0) {
+    console.warn('[transfer-recommendations] prediction failures', predictionInput.errors)
   }
 
   const squadWithPredictions: PlayerWithPrediction[] = squad.map((player) => ({
@@ -77,7 +70,7 @@ export async function POST() {
   return NextResponse.json({
     ...result,
     transfers_remaining: transfersRemaining,
-    fixtures_considered: upcomingMatches.map((match) => match.match_id),
+    fixtures_considered: predictionInput.fixtures_considered,
     scoring_available: predictionScores.size > 0,
   })
 }

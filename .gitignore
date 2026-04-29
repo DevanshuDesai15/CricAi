@@ -49,3 +49,5 @@ node_modules/
 .next/
 scripts/ml/artifacts/
 IPLsquad.json
+IPL_matches.json
+players_details.json
