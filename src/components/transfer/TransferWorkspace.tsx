@@ -31,16 +31,31 @@ export function TransferWorkspace({
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-3 text-sm text-muted-foreground">
-          <span>{initialSquad.length} / 11 players</span>
-          <span>·</span>
-          <span>{transfersRemaining} transfers left</span>
+      {/* Squad summary bar */}
+      <div className="flex items-center justify-between rounded-xl border border-border bg-card/50 px-5 py-3">
+        <div className="flex items-center gap-4 text-sm">
+          <div className="flex items-center gap-2">
+            <div className="w-2 h-2 rounded-full bg-brand-blue" />
+            <span className="text-text-secondary">
+              <span className="font-semibold text-text-primary">{initialSquad.length}</span> / 11 players
+            </span>
+          </div>
+          <div className="w-px h-4 bg-border" />
+          <div className="flex items-center gap-2">
+            <div className="w-2 h-2 rounded-full bg-brand-green" />
+            <span className="text-text-secondary">
+              <span className="font-semibold text-text-primary">{transfersRemaining}</span> transfers left
+            </span>
+          </div>
         </div>
-        <span className="text-xs text-muted-foreground italic">{squadName}</span>
+        <span className="text-xs text-text-muted italic font-medium">{squadName}</span>
       </div>
+
+      {/* Fixtures */}
       <FixturesStrip fixtures={fixtures} />
-      <div className="grid gap-6 xl:grid-cols-[1fr_360px]">
+
+      {/* Main grid */}
+      <div className="grid gap-6 xl:grid-cols-[1fr_380px] items-start">
         <PitchFormation players={workingSquad} />
         <div className="space-y-6">
           <EditCurrentSquadCard

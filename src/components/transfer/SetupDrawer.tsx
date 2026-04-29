@@ -2,20 +2,26 @@
 
 import { useMemo, useState, useTransition } from 'react'
 import { useRouter } from 'next/navigation'
-import { Circle, CheckCircle2, ShieldAlert } from 'lucide-react'
+import { Circle, CheckCircle2, ShieldAlert, Users, Crown, Settings, X, Sparkles } from 'lucide-react'
 import { PlayerSearch } from '@/components/transfer/PlayerSearch'
 import { PitchFormation } from '@/components/transfer/PitchFormation'
 import type { FantasyPlayerSearchResult } from '@/lib/queries/fantasy-players'
 import { getSquadCreditTotal, getSquadOverseasCount, getSquadRoleCounts, validateSquad } from '@/lib/squad-validator'
 
 const BOOSTERS = [
-  { id: 'double_power', label: 'Double Power' },
-  { id: 'indian_warrior', label: 'Indian Warrior' },
-  { id: 'triple_captain', label: 'Triple Captain' },
-  { id: 'foreign_stars', label: 'Foreign Stars' },
-  { id: 'free_hit', label: 'Free Hit' },
-  { id: 'wildcard', label: 'Wildcard' },
+  { id: 'double_power', label: 'Double Power', icon: '⚡' },
+  { id: 'indian_warrior', label: 'Indian Warrior', icon: '🇮🇳' },
+  { id: 'triple_captain', label: 'Triple Captain', icon: '👑' },
+  { id: 'foreign_stars', label: 'Foreign Stars', icon: '🌍' },
+  { id: 'free_hit', label: 'Free Hit', icon: '🎯' },
+  { id: 'wildcard', label: 'Wildcard', icon: '🃏' },
 ] as const
+
+const STEPS = [
+  { number: 1, label: 'Build Squad', icon: Users },
+  { number: 2, label: 'Pick Captain', icon: Crown },
+  { number: 3, label: 'Settings', icon: Settings },
+]
 
 interface SetupDrawerProps {
   availablePlayers: FantasyPlayerSearchResult[]
@@ -116,27 +122,59 @@ export function SetupDrawer({ availablePlayers }: SetupDrawerProps) {
   const hasViceCaptain = squad.some((player) => player.is_vice_captain)
 
   return (
-    <div className="rounded-2xl border border-border bg-card">
-      <div className="border-b border-border p-6">
-        <div className="text-xs uppercase tracking-[0.25em] text-brand-blue font-semibold">
-          Setup
-        </div>
-        <h2 className="mt-2 text-2xl font-bold">Create your starting squad</h2>
-        <div className="mt-4 flex gap-2">
-          {[1, 2, 3].map((value) => (
-            <div
-              key={value}
-              className={`h-1 flex-1 rounded-full ${value <= step ? 'bg-brand-blue' : 'bg-border'}`}
-            />
-          ))}
+    <div className="rounded-2xl border border-border bg-card overflow-hidden">
+      {/* Header */}
+      <div className="relative overflow-hidden border-b border-border">
+        <div className="absolute inset-0 bg-gradient-to-r from-brand-blue/5 to-brand-orange/5" />
+        <div className="relative p-6">
+          <div className="flex items-center gap-2 mb-2">
+            <Sparkles className="w-4 h-4 text-brand-blue" />
+            <span className="text-[11px] font-bold uppercase tracking-[0.25em] text-brand-blue">
+              Setup
+            </span>
+          </div>
+          <h2 className="text-2xl font-bold font-outfit tracking-tight">Create your starting squad</h2>
+          <p className="mt-1 text-sm text-text-secondary">
+            Build your dream XI in three easy steps.
+          </p>
+
+          {/* Step indicators */}
+          <div className="mt-5 flex gap-2">
+            {STEPS.map((s) => {
+              const isActive = s.number === step
+              const isDone = s.number < step
+              const StepIcon = s.icon
+              return (
+                <div key={s.number} className="flex-1">
+                  <div
+                    className={`flex items-center gap-2 px-3 py-2 rounded-lg border transition-all duration-200 ${
+                      isActive
+                        ? 'bg-brand-blue-dim border-brand-blue/25 text-brand-blue'
+                        : isDone
+                          ? 'bg-brand-green-dim border-brand-green/20 text-brand-green'
+                          : 'bg-transparent border-border text-text-dim'
+                    }`}
+                  >
+                    <StepIcon className="w-3.5 h-3.5 shrink-0" />
+                    <span className="text-[11px] font-semibold truncate">{s.label}</span>
+                  </div>
+                  <div className={`h-1 rounded-full mt-2 transition-all duration-300 ${
+                    isDone ? 'bg-brand-green' : isActive ? 'bg-brand-blue' : 'bg-border'
+                  }`} />
+                </div>
+              )
+            })}
+          </div>
         </div>
       </div>
 
+      {/* Content */}
       <div className="space-y-6 p-6">
         {step === 1 && (
           <>
+            {/* Team name */}
             <div>
-              <label className="mb-1.5 block text-xs font-semibold uppercase tracking-[0.2em] text-muted-foreground">
+              <label className="mb-1.5 block text-xs font-semibold uppercase tracking-[0.2em] text-text-muted">
                 Team name
               </label>
               <input
@@ -145,41 +183,56 @@ export function SetupDrawer({ availablePlayers }: SetupDrawerProps) {
                 onChange={(event) => { setSquadName(event.target.value); setError(null) }}
                 placeholder="e.g. Royal Smashers XI"
                 maxLength={40}
-                className="w-full rounded-xl border border-border bg-background px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-brand-blue/40"
+                className="w-full rounded-xl border border-border bg-surface px-4 py-3 text-sm placeholder:text-text-dim focus:outline-none focus:ring-2 focus:ring-brand-blue/40 focus:border-brand-blue/30 transition-all"
               />
             </div>
 
-            <div className="flex flex-wrap gap-4 text-sm">
-              <span className={squad.length === 11 ? 'text-brand-green font-semibold' : ''}>
+            {/* Stats pills */}
+            <div className="flex flex-wrap gap-2">
+              <span className={`text-xs px-2.5 py-1 rounded-full font-medium ${squad.length === 11 ? 'bg-brand-green-dim text-brand-green border border-brand-green/20' : 'bg-card text-text-muted border border-border'}`}>
                 {squad.length} / 11 players
               </span>
-              <span>{totalCredits.toFixed(1)} / 100 credits</span>
-              <span>{overseasCount} / 4 overseas</span>
-              <span>WK {roleCounts.WK} · BAT {roleCounts.BAT} · AR {roleCounts.AR} · BOWL {roleCounts.BOWL}</span>
+              <span className={`text-xs px-2.5 py-1 rounded-full font-medium tabular-nums ${totalCredits > 100 ? 'bg-red-500/10 text-red-300 border border-red-500/20' : 'bg-card text-text-muted border border-border'}`}>
+                {totalCredits.toFixed(1)} / 100 credits
+              </span>
+              <span className={`text-xs px-2.5 py-1 rounded-full font-medium tabular-nums ${overseasCount > 4 ? 'bg-red-500/10 text-red-300 border border-red-500/20' : 'bg-card text-text-muted border border-border'}`}>
+                {overseasCount} / 4 overseas
+              </span>
+              <span className="text-xs px-2.5 py-1 rounded-full bg-card text-text-muted border border-border">
+                WK {roleCounts.WK} · BAT {roleCounts.BAT} · AR {roleCounts.AR} · BOWL {roleCounts.BOWL}
+              </span>
             </div>
 
+            {/* Player search */}
             <PlayerSearch
               availablePlayers={availablePlayers}
               selectedPlayerIds={squad.map((player) => player.player_id)}
               onAdd={addPlayer}
             />
 
+            {/* Selected players */}
             {squad.length > 0 && (
               <div className="space-y-2">
+                <div className="text-xs font-semibold uppercase tracking-[0.2em] text-text-muted mb-2">
+                  Selected Players ({squad.length})
+                </div>
                 {squad.map((player) => (
-                  <div key={player.player_id} className="flex items-center justify-between rounded-lg border border-border px-4 py-3">
+                  <div key={player.player_id} className="flex items-center justify-between rounded-lg border border-border bg-surface/50 px-4 py-3 hover:border-border-accent transition-all duration-150">
                     <div>
-                      <div className="font-medium">{player.name}</div>
-                      <div className="text-xs text-muted-foreground">
-                        {player.fantasy_role} · {player.credit_value?.toFixed(1) ?? '8.0'} cr
+                      <div className="font-medium text-sm">{player.name}</div>
+                      <div className="text-[11px] text-text-muted mt-0.5 flex items-center gap-1.5">
+                        <span className="inline-flex items-center px-1.5 py-0.5 rounded bg-brand-blue-dim text-brand-blue text-[10px] font-semibold">
+                          {player.fantasy_role}
+                        </span>
+                        <span className="tabular-nums">{player.credit_value?.toFixed(1) ?? '8.0'} cr</span>
                       </div>
                     </div>
                     <button
                       type="button"
                       onClick={() => removePlayer(player.player_id)}
-                      className="text-sm text-muted-foreground hover:text-foreground"
+                      className="w-7 h-7 rounded-md flex items-center justify-center text-text-muted hover:text-red-400 hover:bg-red-500/10 transition-all"
                     >
-                      Remove
+                      <X className="w-3.5 h-3.5" />
                     </button>
                   </div>
                 ))}
@@ -190,26 +243,29 @@ export function SetupDrawer({ availablePlayers }: SetupDrawerProps) {
 
         {step === 2 && (
           <>
-            <p className="text-sm text-muted-foreground">
-              Assign exactly one captain and one vice-captain.
-            </p>
+            <div className="flex items-center gap-3 rounded-xl bg-brand-blue-dim border border-brand-blue/15 px-4 py-3">
+              <Crown className="w-5 h-5 text-brand-blue shrink-0" />
+              <p className="text-sm text-text-secondary">
+                Assign exactly one <span className="text-brand-blue font-semibold">captain</span> and one <span className="text-brand-orange font-semibold">vice-captain</span>.
+              </p>
+            </div>
             <PitchFormation players={squad} />
             <div className="space-y-2">
               {squad.map((player) => (
-                <div key={player.player_id} className="flex items-center justify-between rounded-lg border border-border px-4 py-3">
-                  <div className="font-medium">{player.name}</div>
+                <div key={player.player_id} className="flex items-center justify-between rounded-lg border border-border bg-surface/50 px-4 py-3 hover:border-border-accent transition-all">
+                  <div className="font-medium text-sm">{player.name}</div>
                   <div className="flex gap-2">
                     <button
                       type="button"
                       onClick={() => setCaptain(player.player_id)}
-                      className={`rounded px-3 py-1 text-xs font-semibold ${player.is_captain ? 'bg-brand-blue-dim text-brand-blue' : 'bg-muted text-muted-foreground'}`}
+                      className={`rounded-md px-3 py-1.5 text-xs font-bold tracking-wider transition-all ${player.is_captain ? 'bg-brand-blue/15 text-brand-blue border border-brand-blue/25 shadow-sm shadow-brand-blue/10' : 'bg-surface text-text-muted border border-border hover:border-border-accent'}`}
                     >
                       Captain
                     </button>
                     <button
                       type="button"
                       onClick={() => setViceCaptain(player.player_id)}
-                      className={`rounded px-3 py-1 text-xs font-semibold ${player.is_vice_captain ? 'bg-brand-blue-dim text-brand-blue' : 'bg-muted text-muted-foreground'}`}
+                      className={`rounded-md px-3 py-1.5 text-xs font-bold tracking-wider transition-all ${player.is_vice_captain ? 'bg-brand-orange/15 text-brand-orange border border-brand-orange/25 shadow-sm shadow-brand-orange/10' : 'bg-surface text-text-muted border border-border hover:border-border-accent'}`}
                     >
                       Vice-Captain
                     </button>
@@ -222,8 +278,9 @@ export function SetupDrawer({ availablePlayers }: SetupDrawerProps) {
 
         {step === 3 && (
           <>
+            {/* Transfers used */}
             <div>
-              <label className="mb-2 block text-xs font-semibold uppercase tracking-[0.2em] text-muted-foreground">
+              <label className="mb-2 block text-xs font-semibold uppercase tracking-[0.2em] text-text-muted">
                 Transfers used
               </label>
               <input
@@ -232,47 +289,60 @@ export function SetupDrawer({ availablePlayers }: SetupDrawerProps) {
                 max={160}
                 value={transfersUsed}
                 onChange={(event) => setTransfersUsed(Math.max(0, Math.min(160, Number(event.target.value))))}
-                className="w-full rounded-xl border border-border bg-background px-4 py-3"
+                className="w-full rounded-xl border border-border bg-surface px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-brand-blue/40 focus:border-brand-blue/30 transition-all"
               />
-              <p className="mt-2 text-xs text-muted-foreground">
+              <p className="mt-2 text-xs text-text-muted tabular-nums">
                 {160 - transfersUsed} transfers remaining
               </p>
             </div>
 
+            {/* Boosters */}
             <div className="space-y-2">
-              <div className="text-xs font-semibold uppercase tracking-[0.2em] text-muted-foreground">
+              <div className="text-xs font-semibold uppercase tracking-[0.2em] text-text-muted">
                 Boosters already used
               </div>
-              {BOOSTERS.map((booster) => (
-                <button
-                  key={booster.id}
-                  type="button"
-                  onClick={() => toggleBooster(booster.id)}
-                  className="flex items-center gap-2 text-sm text-left"
-                >
-                  {boostersUsed.includes(booster.id)
-                    ? <CheckCircle2 className="h-4 w-4 text-brand-blue" />
-                    : <Circle className="h-4 w-4 text-muted-foreground" />}
-                  {booster.label}
-                </button>
-              ))}
+              <div className="grid grid-cols-2 gap-2">
+                {BOOSTERS.map((booster) => {
+                  const isUsed = boostersUsed.includes(booster.id)
+                  return (
+                    <button
+                      key={booster.id}
+                      type="button"
+                      onClick={() => toggleBooster(booster.id)}
+                      className={`flex items-center gap-2.5 text-sm text-left rounded-lg border px-3 py-2.5 transition-all duration-150 ${
+                        isUsed
+                          ? 'bg-brand-blue-dim border-brand-blue/20 text-brand-blue'
+                          : 'bg-surface border-border text-text-muted hover:border-border-accent hover:text-text-secondary'
+                      }`}
+                    >
+                      <span className="text-base">{booster.icon}</span>
+                      {isUsed
+                        ? <CheckCircle2 className="h-4 w-4 text-brand-blue shrink-0" />
+                        : <Circle className="h-4 w-4 text-text-dim shrink-0" />}
+                      <span className="text-xs font-medium">{booster.label}</span>
+                    </button>
+                  )
+                })}
+              </div>
             </div>
           </>
         )}
 
+        {/* Error */}
         {error && (
-          <div className="flex items-start gap-2 rounded-xl border border-amber-500/30 bg-amber-500/10 px-4 py-3 text-sm text-amber-200">
-            <ShieldAlert className="mt-0.5 h-4 w-4 shrink-0" />
+          <div className="flex items-start gap-2.5 rounded-xl border border-amber-500/25 bg-amber-500/8 px-4 py-3 text-sm text-amber-200">
+            <ShieldAlert className="mt-0.5 h-4 w-4 shrink-0 text-amber-400" />
             <span>{error}</span>
           </div>
         )}
 
-        <div className="flex gap-3">
+        {/* Navigation buttons */}
+        <div className="flex gap-3 pt-1">
           <button
             type="button"
             onClick={() => setStep((current) => Math.max(1, current - 1))}
             disabled={step === 1 || isPending}
-            className="rounded-xl border border-border px-4 py-2 text-sm disabled:opacity-40"
+            className="rounded-xl border border-border px-5 py-2.5 text-sm font-medium text-text-muted hover:bg-card-hover hover:text-text-secondary disabled:opacity-40 transition-all"
           >
             Back
           </button>
@@ -299,17 +369,18 @@ export function SetupDrawer({ availablePlayers }: SetupDrawerProps) {
                 setError(null)
                 setStep((current) => Math.min(3, current + 1))
               }}
-              className="rounded-xl bg-primary px-4 py-2 text-sm text-primary-foreground"
+              className="rounded-xl bg-brand-blue px-5 py-2.5 text-sm font-semibold text-white hover:bg-brand-blue/90 shadow-sm shadow-brand-blue/20 transition-all"
             >
-              Next
+              Next step →
             </button>
           ) : (
             <button
               type="button"
               onClick={saveSquad}
               disabled={isPending}
-              className="rounded-xl bg-primary px-4 py-2 text-sm text-primary-foreground disabled:opacity-40"
+              className="rounded-xl bg-gradient-to-r from-brand-blue to-brand-blue/80 px-5 py-2.5 text-sm font-semibold text-white shadow-lg shadow-brand-blue/20 disabled:opacity-40 transition-all flex items-center gap-2"
             >
+              <Sparkles className="w-4 h-4" />
               {isPending ? 'Saving...' : 'Save squad'}
             </button>
           )}

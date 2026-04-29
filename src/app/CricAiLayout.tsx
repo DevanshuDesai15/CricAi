@@ -100,7 +100,7 @@ function Sidebar() {
         <SignOutButton />
 
         {/* Phase badge */}
-        <div className="bg-brand-blue-dim border border-brand-blue-dim/20 rounded-lg p-2.5">
+        {/* <div className="bg-brand-blue-dim border border-brand-blue-dim/20 rounded-lg p-2.5">
           <div className="flex items-center gap-1.5 mb-1">
             <div className="w-1.5 h-1.5 rounded-full bg-brand-green shadow-[0_0_6px_var(--color-brand-green)] animate-pulse" />
             <div className="text-[10px] text-brand-blue font-bold tracking-widest uppercase">
@@ -110,13 +110,13 @@ function Sidebar() {
           <div className="text-[11px] text-text-muted leading-tight">
             Transfer Assistant
           </div>
-        </div>
+        </div> */}
 
         {/* Version */}
-        <div className="mt-3 text-[11px] text-text-dim flex items-center gap-1.5 pl-1.5 font-medium">
+        {/* <div className="mt-3 text-[11px] text-text-dim flex items-center gap-1.5 pl-1.5 font-medium">
           <Activity className="w-3 h-3" />
           <span>v0.2.0-alpha</span>
-        </div>
+        </div> */}
       </div>
     </aside>
   )

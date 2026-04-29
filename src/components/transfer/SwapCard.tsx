@@ -1,6 +1,6 @@
 'use client'
 
-import { ArrowRight } from 'lucide-react'
+import { ArrowRight, TrendingUp, TrendingDown } from 'lucide-react'
 import type { SwapSuggestion } from '@/lib/recommendation-engine'
 
 interface SwapCardProps {
@@ -12,37 +12,63 @@ interface SwapCardProps {
 
 export function SwapCard({ swap, transfersRemaining, applied, onApply }: SwapCardProps) {
   return (
-    <div className="rounded-xl border border-border bg-card p-4">
-      <div className="grid grid-cols-[1fr_auto_1fr] items-center gap-3">
-        <div className="rounded-lg border border-red-500/20 bg-red-500/10 px-3 py-2">
-          <div className="text-[10px] font-semibold uppercase tracking-[0.2em] text-red-300">Out</div>
-          <div className="mt-1 font-medium">{swap.player_out.name}</div>
-          <div className="text-xs text-muted-foreground">
-            {swap.player_out.predicted_points.toFixed(1)} pts
+    <div className={`rounded-xl border transition-all duration-200 overflow-hidden ${applied ? 'border-brand-green/30 bg-brand-green-dim' : 'border-border bg-card hover:border-border-accent'}`}>
+      {/* Swap visual */}
+      <div className="grid grid-cols-[1fr_auto_1fr] items-stretch">
+        {/* Player Out */}
+        <div className="p-4 border-r border-border/50">
+          <div className="flex items-center gap-1.5 mb-2">
+            <TrendingDown className="w-3 h-3 text-red-400" />
+            <span className="text-[9px] font-bold uppercase tracking-[0.25em] text-red-400">Out</span>
+          </div>
+          <div className="font-semibold text-sm text-text-primary">{swap.player_out.name}</div>
+          <div className="text-xs text-text-muted mt-0.5 tabular-nums">
+            {swap.player_out.predicted_points.toFixed(1)} pts predicted
           </div>
         </div>
-        <ArrowRight className="h-4 w-4 text-muted-foreground" />
-        <div className="rounded-lg border border-green-500/20 bg-green-500/10 px-3 py-2">
-          <div className="text-[10px] font-semibold uppercase tracking-[0.2em] text-green-300">In</div>
-          <div className="mt-1 font-medium">{swap.player_in.name}</div>
-          <div className="text-xs text-muted-foreground">
-            {swap.player_in.predicted_points.toFixed(1)} pts
+
+        {/* Arrow */}
+        <div className="flex items-center justify-center px-2 bg-border/20">
+          <div className="w-7 h-7 rounded-full bg-card border border-border flex items-center justify-center">
+            <ArrowRight className="h-3.5 w-3.5 text-text-muted" />
+          </div>
+        </div>
+
+        {/* Player In */}
+        <div className="p-4 border-l border-border/50">
+          <div className="flex items-center gap-1.5 mb-2">
+            <TrendingUp className="w-3 h-3 text-emerald-400" />
+            <span className="text-[9px] font-bold uppercase tracking-[0.25em] text-emerald-400">In</span>
+          </div>
+          <div className="font-semibold text-sm text-text-primary">{swap.player_in.name}</div>
+          <div className="text-xs text-text-muted mt-0.5 tabular-nums">
+            {swap.player_in.predicted_points.toFixed(1)} pts predicted
           </div>
         </div>
       </div>
 
-      <div className="mt-3 flex items-center justify-between text-xs">
-        <div className="flex gap-3 text-muted-foreground">
-          <span className="text-green-300">+{swap.points_delta.toFixed(1)} pts</span>
-          <span>{swap.credit_delta >= 0 ? '+' : ''}{swap.credit_delta.toFixed(1)} cr</span>
+      {/* Footer */}
+      <div className="flex items-center justify-between px-4 py-2.5 border-t border-border/50 bg-surface/50">
+        <div className="flex gap-4 text-xs">
+          <span className="flex items-center gap-1 text-emerald-400 font-semibold tabular-nums">
+            <TrendingUp className="w-3 h-3" />
+            +{swap.points_delta.toFixed(1)} pts
+          </span>
+          <span className="text-text-muted tabular-nums">
+            {swap.credit_delta >= 0 ? '+' : ''}{swap.credit_delta.toFixed(1)} cr
+          </span>
         </div>
         <button
           type="button"
           onClick={() => onApply(swap)}
           disabled={applied || transfersRemaining <= 0}
-          className="rounded-lg bg-primary px-3 py-1.5 text-primary-foreground disabled:opacity-40"
+          className={`rounded-lg px-3.5 py-1.5 text-xs font-semibold transition-all duration-200 disabled:opacity-40 ${
+            applied
+              ? 'bg-brand-green/15 text-brand-green border border-brand-green/25 cursor-default'
+              : 'bg-brand-blue text-white hover:bg-brand-blue/90 shadow-sm shadow-brand-blue/20'
+          }`}
         >
-          {applied ? 'Applied' : transfersRemaining > 0 ? 'Apply' : 'No transfers'}
+          {applied ? '✓ Applied' : transfersRemaining > 0 ? 'Apply' : 'No transfers'}
         </button>
       </div>
     </div>

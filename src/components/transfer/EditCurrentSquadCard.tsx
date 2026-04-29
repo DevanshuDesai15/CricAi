@@ -2,7 +2,7 @@
 
 import { useMemo, useState, useTransition } from 'react'
 import { useRouter } from 'next/navigation'
-import { Settings2, X } from 'lucide-react'
+import { Settings2, X, ChevronDown, ChevronUp, Shield, Save } from 'lucide-react'
 import { PlayerSearch } from '@/components/transfer/PlayerSearch'
 import type { FantasyPlayerSearchResult } from '@/lib/queries/fantasy-players'
 import type { UserSquadPlayer } from '@/lib/queries/user-squad'
@@ -123,115 +123,141 @@ export function EditCurrentSquadCard({
   }
 
   return (
-    <section className="rounded-lg border border-border bg-card p-4">
-      <div className="flex items-center justify-between gap-4">
-        <div>
-          <div className="text-xs uppercase tracking-[0.22em] text-muted-foreground">Current team</div>
-          <div className="mt-1 text-sm font-medium">{squadName}</div>
-          <div className="text-xs text-muted-foreground">
-            {initialSquad.length} players · {transfersUsed} used · {MAX_TRANSFERS_PER_SEASON - transfersUsed} left
+    <section className="rounded-xl border border-border bg-card overflow-hidden">
+      {/* Header */}
+      <div
+        className="flex items-center justify-between gap-4 px-5 py-4 cursor-pointer hover:bg-card-hover transition-colors duration-150"
+        onClick={() => setIsEditing((current) => !current)}
+      >
+        <div className="flex items-center gap-3">
+          <div className="w-8 h-8 rounded-lg bg-brand-blue-dim flex items-center justify-center shrink-0">
+            <Shield className="w-4 h-4 text-brand-blue" />
+          </div>
+          <div>
+            <div className="text-xs font-bold uppercase tracking-[0.2em] text-text-muted">Current Team</div>
+            <div className="mt-0.5 text-sm font-semibold text-text-primary">{squadName}</div>
           </div>
         </div>
-        <button
-          type="button"
-          onClick={() => setIsEditing((current) => !current)}
-          className="inline-flex h-9 w-9 items-center justify-center rounded border border-border text-muted-foreground hover:bg-muted hover:text-foreground"
-          aria-label="Edit current team"
-          title="Edit current team"
-        >
-          <Settings2 className="h-4 w-4" />
-        </button>
+        <div className="flex items-center gap-3">
+          <div className="hidden sm:flex items-center gap-2 text-xs text-text-muted">
+            <span className="tabular-nums">{initialSquad.length} players</span>
+            <span className="text-text-dim">·</span>
+            <span className="tabular-nums">{MAX_TRANSFERS_PER_SEASON - transfersUsed} left</span>
+          </div>
+          <div className="w-7 h-7 rounded-lg border border-border flex items-center justify-center text-text-muted hover:bg-card-hover transition-colors">
+            {isEditing ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
+          </div>
+        </div>
       </div>
 
       {isEditing && (
-        <div className="mt-4 space-y-4 border-t border-border pt-4">
-          <div className="flex flex-wrap gap-3 text-xs text-muted-foreground">
-            <span className={squad.length === 11 ? 'text-brand-green font-semibold' : ''}>{squad.length} / 11 players</span>
-            <span>{totalCredits.toFixed(1)} / 100 cr</span>
-            <span>{overseasCount} / 4 overseas</span>
-            <span>WK {roleCounts.WK} · BAT {roleCounts.BAT} · AR {roleCounts.AR} · BOWL {roleCounts.BOWL}</span>
-          </div>
-
-          <label className="block">
-            <span className="mb-1 block text-xs font-semibold uppercase tracking-[0.16em] text-muted-foreground">
-              Transfers used
+        <div className="border-t border-border">
+          {/* Stats bar */}
+          <div className="flex flex-wrap gap-3 px-5 py-3 bg-surface/50 border-b border-border">
+            <span className={`text-xs px-2 py-0.5 rounded-full ${squad.length === 11 ? 'bg-brand-green-dim text-brand-green border border-brand-green/20' : 'bg-card text-text-muted border border-border'}`}>
+              {squad.length} / 11 players
             </span>
-            <input
-              type="number"
-              min={0}
-              max={MAX_TRANSFERS_PER_SEASON}
-              value={used}
-              onChange={(event) => setUsed(event.target.value)}
-              className="w-full rounded border border-border bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-blue/40"
-            />
-            <span className="mt-1 block text-xs text-muted-foreground">{transfersLeft} transfers left</span>
-          </label>
-
-          <div className="max-h-64 space-y-2 overflow-y-auto pr-1">
-            {squad.map((player) => (
-              <div key={player.player_id} className="rounded border border-border px-3 py-2">
-                <div className="flex items-start justify-between gap-3">
-                  <div className="min-w-0">
-                    <div className="truncate text-sm font-medium">{player.name}</div>
-                    <div className="text-xs text-muted-foreground">
-                      {player.fantasy_role} · {(player.credit_value ?? 8).toFixed(1)} cr
-                    </div>
-                  </div>
-                  <button
-                    type="button"
-                    onClick={() => removePlayer(player.player_id)}
-                    className="text-muted-foreground hover:text-foreground"
-                    aria-label={`Remove ${player.name}`}
-                  >
-                    <X className="h-4 w-4" />
-                  </button>
-                </div>
-                <div className="mt-2 flex gap-2">
-                  <button
-                    type="button"
-                    onClick={() => setCaptain(player.player_id)}
-                    className={`rounded px-2 py-1 text-[11px] font-semibold ${player.is_captain ? 'bg-brand-blue-dim text-brand-blue' : 'bg-muted text-muted-foreground'}`}
-                  >
-                    C
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setViceCaptain(player.player_id)}
-                    className={`rounded px-2 py-1 text-[11px] font-semibold ${player.is_vice_captain ? 'bg-brand-blue-dim text-brand-blue' : 'bg-muted text-muted-foreground'}`}
-                  >
-                    VC
-                  </button>
-                </div>
-              </div>
-            ))}
+            <span className="text-xs px-2 py-0.5 rounded-full bg-card text-text-muted border border-border tabular-nums">
+              {totalCredits.toFixed(1)} / 100 cr
+            </span>
+            <span className="text-xs px-2 py-0.5 rounded-full bg-card text-text-muted border border-border tabular-nums">
+              {overseasCount} / 4 overseas
+            </span>
+            <span className="text-xs px-2 py-0.5 rounded-full bg-card text-text-muted border border-border">
+              WK {roleCounts.WK} · BAT {roleCounts.BAT} · AR {roleCounts.AR} · BOWL {roleCounts.BOWL}
+            </span>
           </div>
 
-          {squad.length < 11 && (
-            <PlayerSearch
-              availablePlayers={availablePlayers}
-              selectedPlayerIds={selectedIds}
-              onAdd={addPlayer}
-            />
-          )}
+          <div className="p-5 space-y-4">
+            {/* Transfers used */}
+            <label className="block">
+              <span className="mb-1.5 block text-xs font-semibold uppercase tracking-[0.16em] text-text-muted">
+                Transfers used
+              </span>
+              <input
+                type="number"
+                min={0}
+                max={MAX_TRANSFERS_PER_SEASON}
+                value={used}
+                onChange={(event) => setUsed(event.target.value)}
+                className="w-full rounded-lg border border-border bg-surface px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-brand-blue/40 focus:border-brand-blue/30 transition-all"
+              />
+              <span className="mt-1.5 block text-xs text-text-muted tabular-nums">{transfersLeft} transfers left</span>
+            </label>
 
-          {error && <p className="text-xs text-brand-red">{error}</p>}
+            {/* Players list */}
+            <div className="max-h-64 space-y-2 overflow-y-auto pr-1">
+              {squad.map((player) => (
+                <div key={player.player_id} className="rounded-lg border border-border bg-surface/50 hover:border-border-accent transition-all duration-150">
+                  <div className="flex items-start justify-between gap-3 px-3.5 py-2.5">
+                    <div className="min-w-0">
+                      <div className="truncate text-sm font-medium text-text-primary">{player.name}</div>
+                      <div className="text-[11px] text-text-muted mt-0.5">
+                        {player.fantasy_role} · {(player.credit_value ?? 8).toFixed(1)} cr
+                      </div>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => removePlayer(player.player_id)}
+                      className="w-6 h-6 rounded flex items-center justify-center text-text-muted hover:text-red-400 hover:bg-red-500/10 transition-all"
+                      aria-label={`Remove ${player.name}`}
+                    >
+                      <X className="h-3.5 w-3.5" />
+                    </button>
+                  </div>
+                  <div className="flex gap-1.5 px-3.5 pb-2.5">
+                    <button
+                      type="button"
+                      onClick={() => setCaptain(player.player_id)}
+                      className={`rounded-md px-2.5 py-1 text-[11px] font-bold tracking-wider transition-all ${player.is_captain ? 'bg-brand-blue/15 text-brand-blue border border-brand-blue/25' : 'bg-surface text-text-muted border border-border hover:border-border-accent'}`}
+                    >
+                      C
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setViceCaptain(player.player_id)}
+                      className={`rounded-md px-2.5 py-1 text-[11px] font-bold tracking-wider transition-all ${player.is_vice_captain ? 'bg-brand-orange/15 text-brand-orange border border-brand-orange/25' : 'bg-surface text-text-muted border border-border hover:border-border-accent'}`}
+                    >
+                      VC
+                    </button>
+                  </div>
+                </div>
+              ))}
+            </div>
 
-          <div className="flex justify-end gap-2">
-            <button
-              type="button"
-              onClick={reset}
-              className="rounded border border-border px-3 py-2 text-xs font-semibold text-muted-foreground hover:bg-muted hover:text-foreground"
-            >
-              Cancel
-            </button>
-            <button
-              type="button"
-              onClick={save}
-              disabled={isPending}
-              className="rounded bg-brand-blue px-3 py-2 text-xs font-semibold text-white disabled:opacity-60"
-            >
-              {isPending ? 'Saving...' : 'Save team'}
-            </button>
+            {squad.length < 11 && (
+              <PlayerSearch
+                availablePlayers={availablePlayers}
+                selectedPlayerIds={selectedIds}
+                onAdd={addPlayer}
+              />
+            )}
+
+            {error && (
+              <div className="flex items-start gap-2 text-xs text-red-300 bg-red-500/8 border border-red-500/15 rounded-lg px-3 py-2.5">
+                <span className="shrink-0 mt-px">⚠️</span>
+                <span>{error}</span>
+              </div>
+            )}
+
+            <div className="flex justify-end gap-2 pt-1">
+              <button
+                type="button"
+                onClick={reset}
+                className="rounded-lg border border-border px-4 py-2 text-xs font-semibold text-text-muted hover:bg-card-hover hover:text-text-secondary transition-all"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={save}
+                disabled={isPending}
+                className="rounded-lg bg-brand-blue px-4 py-2 text-xs font-semibold text-white hover:bg-brand-blue/90 shadow-sm shadow-brand-blue/20 disabled:opacity-60 transition-all flex items-center gap-1.5"
+              >
+                <Save className="w-3 h-3" />
+                {isPending ? 'Saving...' : 'Save team'}
+              </button>
+            </div>
           </div>
         </div>
       )}
