@@ -24,10 +24,12 @@ export interface TeamStanding {
 
 export async function listRecentMatches(league = 'ipl', limit = 20): Promise<MatchSummary[]> {
   const supabase = await createServerSupabaseClient()
+  const today = new Date().toISOString().slice(0, 10)
   const { data, error } = await supabase
     .from('matches')
     .select('match_id, match_date, team1_id, team2_id, winner, venue_id, season')
     .eq('league_id', league)
+    .lte('match_date', today)
     .order('match_date', { ascending: false })
     .limit(limit)
 

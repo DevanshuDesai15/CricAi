@@ -120,6 +120,12 @@ def parse_match(match_info: dict, scorecard: dict, resolver=None) -> dict:
     raw_winner     = match_info.get("matchWinner", "")
     raw_toss       = match_info.get("tossWinner", "")
     status_str     = match_info.get("status", "").lower()
+    if not raw_winner:
+        status_original = match_info.get("status", "")
+        if " won by " in status_original:
+            raw_winner = status_original.split(" won by ")[0]
+        elif " won the " in status_original:
+            raw_winner = status_original.split(" won the ")[0].split("(")[-1].strip()
     if "no result" in status_str:
         result = "no result"
     elif "tie" in status_str or "tied" in status_str:
