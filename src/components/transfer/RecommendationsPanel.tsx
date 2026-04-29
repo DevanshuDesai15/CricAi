@@ -243,6 +243,24 @@ export function RecommendationsPanel({
         </div>
       )}
 
+      {/* Vice Captain suggestion */}
+      {result.vc_suggestion && (
+        <div className="rounded-xl border border-brand-orange/25 bg-gradient-to-r from-brand-orange/8 to-brand-orange/3 overflow-hidden">
+          <div className="flex items-start gap-3 p-4">
+            <div className="w-8 h-8 rounded-lg bg-brand-orange/15 flex items-center justify-center shrink-0 mt-0.5">
+              <Zap className="h-4 w-4 text-brand-orange" />
+            </div>
+            <div>
+              <div className="text-[10px] font-bold uppercase tracking-[0.25em] text-brand-orange">Vice Captain</div>
+              <div className="mt-1 font-semibold text-text-primary">{result.vc_suggestion.name}</div>
+              <div className="text-xs text-text-muted mt-0.5 tabular-nums">
+                {result.vc_suggestion.predicted_points.toFixed(1)} predicted points
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
       {!result.captain_suggestion && (
         <div className="flex items-center gap-3 rounded-xl border border-border bg-card px-4 py-3.5">
           <Sparkles className="h-4 w-4 text-text-muted shrink-0" />

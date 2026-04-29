@@ -37,6 +37,7 @@ export function SetupDrawer({ availablePlayers }: SetupDrawerProps) {
   const [squadName, setSquadName] = useState('')
   const [squad, setSquad] = useState<SquadSelection[]>([])
   const [transfersUsed, setTransfersUsed] = useState(0)
+  const [totalPoints, setTotalPoints] = useState(0)
   const [boostersUsed, setBoostersUsed] = useState<string[]>([])
   const [error, setError] = useState<string | null>(null)
   const [isPending, startTransition] = useTransition()
@@ -101,6 +102,7 @@ export function SetupDrawer({ availablePlayers }: SetupDrawerProps) {
               is_vice_captain: player.is_vice_captain,
             })),
             transfersUsed,
+            totalPoints,
             boostersUsed,
           }),
         })
@@ -278,22 +280,41 @@ export function SetupDrawer({ availablePlayers }: SetupDrawerProps) {
 
         {step === 3 && (
           <>
-            {/* Transfers used */}
-            <div>
-              <label className="mb-2 block text-xs font-semibold uppercase tracking-[0.2em] text-text-muted">
-                Transfers used
-              </label>
-              <input
-                type="number"
-                min={0}
-                max={160}
-                value={transfersUsed}
-                onChange={(event) => setTransfersUsed(Math.max(0, Math.min(160, Number(event.target.value))))}
-                className="w-full rounded-xl border border-border bg-surface px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-brand-blue/40 focus:border-brand-blue/30 transition-all"
-              />
-              <p className="mt-2 text-xs text-text-muted tabular-nums">
-                {160 - transfersUsed} transfers remaining
-              </p>
+            <div className="grid grid-cols-2 gap-4">
+              {/* Transfers used */}
+              <div>
+                <label className="mb-2 block text-xs font-semibold uppercase tracking-[0.2em] text-text-muted">
+                  Transfers used
+                </label>
+                <input
+                  type="number"
+                  min={0}
+                  max={160}
+                  value={transfersUsed}
+                  onChange={(event) => setTransfersUsed(Math.max(0, Math.min(160, Number(event.target.value))))}
+                  className="w-full rounded-xl border border-border bg-surface px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-brand-blue/40 focus:border-brand-blue/30 transition-all"
+                />
+                <p className="mt-2 text-xs text-text-muted tabular-nums">
+                  {160 - transfersUsed} transfers remaining
+                </p>
+              </div>
+
+              {/* Total points */}
+              <div>
+                <label className="mb-2 block text-xs font-semibold uppercase tracking-[0.2em] text-text-muted">
+                  Total points
+                </label>
+                <input
+                  type="number"
+                  min={0}
+                  value={totalPoints}
+                  onChange={(event) => setTotalPoints(Math.max(0, Number(event.target.value)))}
+                  className="w-full rounded-xl border border-border bg-surface px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-amber-500/40 focus:border-amber-500/30 transition-all"
+                />
+                <p className="mt-2 text-xs text-text-muted tabular-nums">
+                  Season total
+                </p>
+              </div>
             </div>
 
             {/* Boosters */}

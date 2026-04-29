@@ -23,6 +23,7 @@ export async function POST(request: Request) {
   await updateUserSquadName(user.id, payload.squadName)
   await saveTransferState(user.id, {
     transfers_used: payload.transfersUsed,
+    total_points: payload.totalPoints,
     boosters_used: transferState.boosters_used,
   })
 

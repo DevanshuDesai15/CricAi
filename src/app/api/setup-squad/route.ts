@@ -12,6 +12,7 @@ interface SetupSquadRequestBody {
     is_vice_captain: boolean
   }>
   transfersUsed: number
+  totalPoints: number
   boostersUsed: string[]
 }
 
@@ -34,7 +35,7 @@ export async function POST(request: Request) {
     { onConflict: 'id', ignoreDuplicates: true }
   )
 
-  const { squadName, players, transfersUsed, boostersUsed } = await request.json() as SetupSquadRequestBody
+  const { squadName, players, transfersUsed, totalPoints, boostersUsed } = await request.json() as SetupSquadRequestBody
 
   if (typeof squadName !== 'string' || squadName.trim().length === 0) {
     return NextResponse.json({ error: 'Squad name is required.' }, { status: 400 })
@@ -80,6 +81,7 @@ export async function POST(request: Request) {
   await saveUserSquad(user.id, squadName.trim(), players)
   await saveTransferState(user.id, {
     transfers_used: Number.isFinite(transfersUsed) ? Math.max(0, Math.min(160, transfersUsed)) : 0,
+    total_points: Number.isFinite(totalPoints) ? Math.max(0, totalPoints) : 0,
     boosters_used: Array.isArray(boostersUsed)
       ? boostersUsed.filter((value): value is string => typeof value === 'string')
       : [],

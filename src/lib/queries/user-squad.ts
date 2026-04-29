@@ -20,6 +20,7 @@ export interface UserSquadSaveInput {
 
 export interface TransferState {
   transfers_used: number
+  total_points: number
   boosters_used: string[]
 }
 
@@ -206,7 +207,7 @@ export async function getTransferState(userId: string): Promise<TransferState> {
   const supabase = await createServerSupabaseClient()
   const { data, error } = await supabase
     .from('user_transfer_state')
-    .select('transfers_used, boosters_used')
+    .select('transfers_used, total_points, boosters_used')
     .eq('user_id', userId)
     .maybeSingle()
 
@@ -214,6 +215,7 @@ export async function getTransferState(userId: string): Promise<TransferState> {
 
   return {
     transfers_used: data?.transfers_used ?? 0,
+    total_points: data?.total_points ?? 0,
     boosters_used: Array.isArray(data?.boosters_used)
       ? data.boosters_used.filter((value): value is string => typeof value === 'string')
       : [],
@@ -228,6 +230,7 @@ export async function saveTransferState(userId: string, state: TransferState): P
       {
         user_id: userId,
         transfers_used: state.transfers_used,
+        total_points: state.total_points,
         boosters_used: state.boosters_used,
         updated_at: new Date().toISOString(),
       },

@@ -75,6 +75,12 @@ export default async function TeamPage() {
                   </div>
                   <div className="text-[10px] text-text-muted uppercase tracking-wider mt-0.5">Used</div>
                 </div>
+                <div className="glass-card rounded-xl px-4 py-2.5 text-center min-w-[80px]">
+                  <div className="text-lg font-bold font-outfit text-amber-400">
+                    {transferState.total_points}
+                  </div>
+                  <div className="text-[10px] text-text-muted uppercase tracking-wider mt-0.5">Total Pts</div>
+                </div>
               </div>
             )}
           </div>
@@ -90,6 +96,7 @@ export default async function TeamPage() {
             squadName={squadData.name}
             initialSquad={squadData.players}
             initialTransfersUsed={transferState.transfers_used}
+            initialTotalPoints={transferState.total_points}
             fixtures={fixtures}
             availablePlayers={availablePlayers}
           />

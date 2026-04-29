@@ -16,6 +16,7 @@ interface EditCurrentSquadCardProps {
   initialSquad: UserSquadPlayer[]
   availablePlayers: FantasyPlayerSearchResult[]
   transfersUsed: number
+  totalPoints: number
 }
 
 export function EditCurrentSquadCard({
@@ -23,10 +24,12 @@ export function EditCurrentSquadCard({
   initialSquad,
   availablePlayers,
   transfersUsed,
+  totalPoints,
 }: EditCurrentSquadCardProps) {
   const [isEditing, setIsEditing] = useState(false)
   const [squad, setSquad] = useState<EditableSquadPlayer[]>(initialSquad)
   const [used, setUsed] = useState(String(transfersUsed))
+  const [points, setPoints] = useState(String(totalPoints))
   const [error, setError] = useState<string | null>(null)
   const [isPending, startTransition] = useTransition()
   const router = useRouter()
@@ -43,6 +46,7 @@ export function EditCurrentSquadCard({
   function reset() {
     setSquad(initialSquad)
     setUsed(String(transfersUsed))
+    setPoints(String(totalPoints))
     setError(null)
     setIsEditing(false)
   }
@@ -100,6 +104,7 @@ export function EditCurrentSquadCard({
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
             transfersUsed: Number(used),
+            totalPoints: Number(points),
             players: squad.map((player) => ({
               player_id: player.player_id,
               is_captain: Boolean(player.is_captain),
@@ -169,21 +174,38 @@ export function EditCurrentSquadCard({
           </div>
 
           <div className="p-5 space-y-4">
-            {/* Transfers used */}
-            <label className="block">
-              <span className="mb-1.5 block text-xs font-semibold uppercase tracking-[0.16em] text-text-muted">
-                Transfers used
-              </span>
-              <input
-                type="number"
-                min={0}
-                max={MAX_TRANSFERS_PER_SEASON}
-                value={used}
-                onChange={(event) => setUsed(event.target.value)}
-                className="w-full rounded-lg border border-border bg-surface px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-brand-blue/40 focus:border-brand-blue/30 transition-all"
-              />
-              <span className="mt-1.5 block text-xs text-text-muted tabular-nums">{transfersLeft} transfers left</span>
-            </label>
+            <div className="grid grid-cols-2 gap-4">
+              {/* Transfers used */}
+              <label className="block">
+                <span className="mb-1.5 block text-xs font-semibold uppercase tracking-[0.16em] text-text-muted">
+                  Transfers used
+                </span>
+                <input
+                  type="number"
+                  min={0}
+                  max={MAX_TRANSFERS_PER_SEASON}
+                  value={used}
+                  onChange={(event) => setUsed(event.target.value)}
+                  className="w-full rounded-lg border border-border bg-surface px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-brand-blue/40 focus:border-brand-blue/30 transition-all"
+                />
+                <span className="mt-1.5 block text-xs text-text-muted tabular-nums">{transfersLeft} transfers left</span>
+              </label>
+
+              {/* Total points */}
+              <label className="block">
+                <span className="mb-1.5 block text-xs font-semibold uppercase tracking-[0.16em] text-text-muted">
+                  Total points
+                </span>
+                <input
+                  type="number"
+                  min={0}
+                  value={points}
+                  onChange={(event) => setPoints(event.target.value)}
+                  className="w-full rounded-lg border border-border bg-surface px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-amber-500/40 focus:border-amber-500/30 transition-all"
+                />
+                <span className="mt-1.5 block text-xs text-text-muted tabular-nums">Season total</span>
+              </label>
+            </div>
 
             {/* Players list */}
             <div className="max-h-64 space-y-2 overflow-y-auto pr-1">

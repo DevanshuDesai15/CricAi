@@ -13,6 +13,7 @@ interface TransferWorkspaceProps {
   squadName: string
   initialSquad: UserSquadPlayer[]
   initialTransfersUsed: number
+  initialTotalPoints: number
   fixtures: UpcomingMatch[]
   availablePlayers: FantasyPlayerSearchResult[]
 }
@@ -21,12 +22,14 @@ export function TransferWorkspace({
   squadName,
   initialSquad,
   initialTransfersUsed,
+  initialTotalPoints,
   fixtures,
   availablePlayers,
 }: TransferWorkspaceProps) {
-  const [workingSquad, setWorkingSquad] = useState(initialSquad)
+  const [workingSquad, setWorkingSquad] = useState<UserSquadPlayer[]>(initialSquad)
+  const [transfersUsed, setTransfersUsed] = useState(initialTransfersUsed)
+  const [totalPoints, setTotalPoints] = useState(initialTotalPoints)
 
-  const transfersUsed = initialTransfersUsed
   const transfersRemaining = Math.max(0, 160 - transfersUsed)
 
   return (
@@ -63,6 +66,7 @@ export function TransferWorkspace({
             initialSquad={initialSquad}
             availablePlayers={availablePlayers}
             transfersUsed={initialTransfersUsed}
+            totalPoints={totalPoints}
           />
           <RecommendationsPanel
             initialSquad={initialSquad}

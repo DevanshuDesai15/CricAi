@@ -11,6 +11,7 @@ export type NormalizedCurrentSquadUpdate =
       ok: true
       players: CurrentSquadSelection[]
       transfersUsed: number
+      totalPoints: number
     }
   | {
       ok: false
@@ -20,6 +21,7 @@ export type NormalizedCurrentSquadUpdate =
 export function normalizeCurrentSquadUpdateInput(input: {
   players?: unknown
   transfersUsed?: unknown
+  totalPoints?: unknown
 }): NormalizedCurrentSquadUpdate {
   if (!Array.isArray(input.players)) {
     return { ok: false, error: 'Invalid squad payload.' }
@@ -43,10 +45,16 @@ export function normalizeCurrentSquadUpdateInput(input: {
     return { ok: false, error: 'Transfers used must be a number.' }
   }
 
+  const totalPoints = Number(input.totalPoints || 0)
+  if (!Number.isFinite(totalPoints)) {
+    return { ok: false, error: 'Total points must be a number.' }
+  }
+
   return {
     ok: true,
     players,
     transfersUsed: Math.max(0, Math.min(MAX_TRANSFERS_PER_SEASON, Math.trunc(transfersUsed))),
+    totalPoints: Math.max(0, Math.trunc(totalPoints)),
   }
 }
 
