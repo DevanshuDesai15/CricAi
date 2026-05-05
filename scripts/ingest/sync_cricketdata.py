@@ -31,16 +31,49 @@ PEOPLE_CSV   = Path(__file__).parent.parent / "data" / "people.csv"
 
 
 def get_existing_api_match_ids(supabase, season: str) -> set:
-    """Return match_ids already in the DB that start with 'api_' for the given season."""
+    """Return API match IDs that already have synced player stat rows."""
     res = (
         supabase.table("matches")
-        .select("match_id")
+        .select("match_id,winner,result")
         .eq("league_id", "ipl")
         .eq("season", season)
         .like("match_id", "api_%")
         .execute()
     )
-    return {r["match_id"] for r in res.data}
+    candidate_ids = []
+    for row in res.data:
+        result = str(row.get("result") or "")
+        is_seeded_placeholder = result.startswith("Match starts")
+        if row.get("winner") or (result and not is_seeded_placeholder):
+            candidate_ids.append(row["match_id"])
+
+    if not candidate_ids:
+        return set()
+
+    stats_res = (
+        supabase.table("player_match_stats")
+        .select("match_id")
+        .in_("match_id", candidate_ids)
+        .execute()
+    )
+    return {row["match_id"] for row in stats_res.data}
+
+
+def build_player_stub_rows(stats: list[dict]) -> list[dict]:
+    """Build minimal player rows for every unique stat player ID."""
+    rows = []
+    seen = set()
+    for stat in stats:
+        player_id = stat.get("player_id")
+        if not player_id or player_id in seen:
+            continue
+        seen.add(player_id)
+        rows.append({
+            "player_id": player_id,
+            "name": player_id,
+            "role": "unknown",
+        })
+    return rows
 
 
 def upsert_parsed(supabase, parsed: dict, resolver=None) -> None:
@@ -57,29 +90,28 @@ def upsert_parsed(supabase, parsed: dict, resolver=None) -> None:
     # Use ignoreDuplicates=True so existing rows (which may have fantasy_role,
     # current_team_id, is_overseas etc. from the external squad pipeline) are
     # never clobbered by a bare-minimum stub.
-    missing = [
-        {
-            "player_id": s["player_id"],
-            # Use player_id as a fallback display name (resolver slug); the
-            # external squad pipeline or a manual patch will fill in a proper
-            # name later via the external_team_squad_player_mappings flow.
-            "name": s["player_id"],
-            "role": "unknown",
-        }
-        for s in stats
-        if s.get("player_id") and (resolver is None or not resolver.is_canonical(s["player_id"]))
-    ]
-    if missing:
+    player_stubs = build_player_stub_rows(stats)
+    if player_stubs:
         supabase.table("players").upsert(
-            missing,
+            player_stubs,
             on_conflict="player_id",
             ignore_duplicates=True,
         ).execute()
-        print(f"  Stubbed {len(missing)} unresolved player(s) (existing rows preserved)")
+        print(f"  Ensured {len(player_stubs)} player row(s) (existing rows preserved)")
 
     for i in range(0, len(stats), 100):
         batch = stats[i : i + 100]
         supabase.table("player_match_stats").upsert(batch, on_conflict="player_id,match_id").execute()
+
+
+def upsert_match_metadata(supabase, parsed: dict) -> None:
+    """Upsert match-level data when the scorecard is not available yet."""
+    supabase.table("venues").upsert(parsed["venue"], on_conflict="venue_id").execute()
+
+    for team in parsed["teams"]:
+        supabase.table("teams").upsert(team, on_conflict="team_id").execute()
+
+    supabase.table("matches").upsert(parsed["match"], on_conflict="match_id").execute()
 
 
 def _is_completed_and_past(match_row: dict) -> bool:
@@ -128,7 +160,18 @@ def sync(year: int = 2026, dry_run: bool = False) -> None:
 
         try:
             info      = client.get_match_info(mid)
-            scorecard = client.get_match_scorecard(mid)
+            try:
+                scorecard = client.get_match_scorecard(mid)
+            except Exception as scorecard_error:
+                parsed = parse_match(info, {"scorecard": []}, resolver=resolver)
+                if dry_run:
+                    print(f"DRY RUN — would update match metadata; scorecard pending: {scorecard_error}")
+                else:
+                    upsert_match_metadata(supabase, parsed)
+                    print(f"metadata OK; scorecard pending: {scorecard_error}")
+                failed.append((name, f"scorecard pending: {scorecard_error}"))
+                continue
+
             parsed    = parse_match(info, scorecard, resolver=resolver)
 
             if dry_run:

@@ -12,6 +12,8 @@ import {
   TrendingUp
 } from 'lucide-react'
 
+export const dynamic = 'force-dynamic'
+
 // ── Team config ───────────────────────────────────────────────────────────
 
 const TEAM_CONFIG: Record<string, { abbr: string; color: string; secondaryColor: string }> = {

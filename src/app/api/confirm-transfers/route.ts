@@ -58,6 +58,7 @@ export async function POST(request: Request) {
   await updateSquadPlayers(user.id, players)
   await saveTransferState(user.id, {
     transfers_used: Math.min(160, transferState.transfers_used + Math.max(0, Math.trunc(transfersApplied))),
+    total_points: transferState.total_points,
     boosters_used: transferState.boosters_used,
   })
 

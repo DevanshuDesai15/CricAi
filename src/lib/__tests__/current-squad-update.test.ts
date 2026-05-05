@@ -11,10 +11,25 @@ describe('normalizeCurrentSquadUpdateInput', () => {
     })).toEqual({
       ok: true,
       transfersUsed: 12,
+      totalPoints: 0,
       players: [
         { player_id: 'kohli', is_captain: true, is_vice_captain: false },
         { player_id: 'axar', is_captain: false, is_vice_captain: true },
       ],
+    })
+  })
+
+  it('normalizes total points', () => {
+    expect(normalizeCurrentSquadUpdateInput({
+      transfersUsed: 12,
+      totalPoints: 456.9,
+      players: [
+        { player_id: 'kohli', is_captain: true, is_vice_captain: false },
+        { player_id: 'axar', is_captain: false, is_vice_captain: true },
+      ],
+    })).toMatchObject({
+      ok: true,
+      totalPoints: 456,
     })
   })
 

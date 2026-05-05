@@ -9,6 +9,18 @@ describe('normalizeTransferSetupInput', () => {
       ok: true,
       squadName: 'Smashing XI',
       transfersUsed: 46,
+      totalPoints: 0,
+    })
+  })
+
+  it('normalizes total points', () => {
+    expect(normalizeTransferSetupInput({
+      squadName: 'Smashing XI',
+      transfersUsed: 46,
+      totalPoints: 789.3,
+    })).toMatchObject({
+      ok: true,
+      totalPoints: 789,
     })
   })
 
