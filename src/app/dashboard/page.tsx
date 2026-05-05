@@ -1,6 +1,9 @@
 import { getIPLStandings, getLatestIPLSeason, listRecentMatches, listUpcomingMatches } from '@/lib/queries/matches'
 import { TeamPerformanceChart } from '@/components/TeamPerformanceChart'
 import { UpcomingPredictions } from '@/components/UpcomingPredictions'
+import { NextMatchWinProbability } from '@/components/NextMatchWinProbability'
+import { SeasonWinnerOdds } from '@/components/SeasonWinnerOdds'
+import { getNextMatchWinProbability, getSeasonWinnerOdds } from '@/lib/team-forecasts'
 import { 
   type LucideIcon,
   Calendar, 
@@ -305,6 +308,9 @@ export default async function DashboardPage() {
   const topTeam = standings[0]
   const topTeamCfg = topTeam ? getTeamConfig(topTeam.team_id) : null
   const maxWins = standings[0]?.wins ?? 1
+  const currentSeasonMatches = recentMatches.filter(match => match.season === season)
+  const seasonWinnerOdds = getSeasonWinnerOdds(standings, currentSeasonMatches, upcomingMatches)
+  const nextMatchWinProbability = getNextMatchWinProbability(upcomingMatches[0], currentSeasonMatches, standings)
 
   const chartData = standings.slice(0, 8).map(t => ({
     name: getTeamConfig(t.team_id).abbr,
@@ -400,9 +406,18 @@ export default async function DashboardPage() {
             </div>
           </div>
 
-          <div>
+          {/* <div>
             <SectionHeader title="Upcoming Predictions" tag="BETA" icon={Activity} />
             <UpcomingPredictions matches={upcomingMatches} />
+          </div> */}
+
+          <div>
+            <SectionHeader title="Next Match Win Probability" tag="FORECAST" icon={Activity} />
+            <NextMatchWinProbability
+              forecast={nextMatchWinProbability}
+              getTeamConfig={getTeamConfig}
+              formatTeamName={formatTeamName}
+            />
           </div>
 
           {/* Recent matches */}
@@ -431,6 +446,15 @@ export default async function DashboardPage() {
 
         {/* ── Right column: Points table ───────────────────────────────── */}
         <div className="sticky top-8">
+          <div className="mb-6">
+            <SectionHeader title="Season Winner Odds" tag="FORECAST" icon={Trophy} />
+            <SeasonWinnerOdds
+              forecast={seasonWinnerOdds}
+              getTeamConfig={getTeamConfig}
+              formatTeamName={formatTeamName}
+            />
+          </div>
+
           <SectionHeader title="Points Table" tag={season ?? '2026'} icon={Trophy} />
           <div className="bg-card border border-border rounded-xl overflow-hidden">
             {/* Table header */}
