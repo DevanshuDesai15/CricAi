@@ -4,6 +4,10 @@ import type { UpcomingMatch } from '@/lib/queries/matches'
 
 const execFileAsync = promisify(execFile)
 
+type PredictionCacheValue = MatchPredictionPayload | TeamMatchPredictionPayload
+
+const predictionCache = new Map<string, Promise<PredictionCacheValue>>()
+
 type PythonExecError = Error & {
   stderr?: string
   stdout?: string
@@ -56,30 +60,66 @@ export function resolvePythonExecutable(): string {
   return process.env.CRICAI_PYTHON_BIN ?? 'python3'
 }
 
-export async function getMatchPredictions(matchId: string): Promise<MatchPredictionPayload> {
-  const { stdout } = await execFileAsync(
-    resolvePythonExecutable(),
-    ['-m', 'ml.predict', '--match-id', matchId, '--format', 'json'],
-    {
-      cwd: `${process.cwd()}/scripts`,
-      maxBuffer: 1024 * 1024,
-    }
-  )
+function getPredictionCacheDay(): string {
+  return new Date().toISOString().slice(0, 10)
+}
 
-  return JSON.parse(stdout) as MatchPredictionPayload
+function getPredictionCacheKey(type: string, matchId: string): string {
+  return `${type}:${matchId}:${getPredictionCacheDay()}`
+}
+
+async function getCachedPrediction<T extends PredictionCacheValue>(
+  type: string,
+  matchId: string,
+  loadPrediction: () => Promise<T>
+): Promise<T> {
+  const cacheKey = getPredictionCacheKey(type, matchId)
+  const cached = predictionCache.get(cacheKey)
+
+  if (cached) {
+    return cached as Promise<T>
+  }
+
+  const pending = loadPrediction().catch(error => {
+    predictionCache.delete(cacheKey)
+    throw error
+  })
+  predictionCache.set(cacheKey, pending)
+  return pending
+}
+
+export function clearPredictionCache(): void {
+  predictionCache.clear()
+}
+
+export async function getMatchPredictions(matchId: string): Promise<MatchPredictionPayload> {
+  return getCachedPrediction('match', matchId, async () => {
+    const { stdout } = await execFileAsync(
+      resolvePythonExecutable(),
+      ['-m', 'ml.predict', '--match-id', matchId, '--format', 'json'],
+      {
+        cwd: `${process.cwd()}/scripts`,
+        maxBuffer: 1024 * 1024,
+      }
+    )
+
+    return JSON.parse(stdout) as MatchPredictionPayload
+  })
 }
 
 export async function getTeamMatchPrediction(matchId: string): Promise<TeamMatchPredictionPayload> {
-  const { stdout } = await execFileAsync(
-    resolvePythonExecutable(),
-    ['-m', 'ml.team_predict', '--match-id', matchId, '--format', 'json'],
-    {
-      cwd: `${process.cwd()}/scripts`,
-      maxBuffer: 1024 * 1024,
-    }
-  )
+  return getCachedPrediction('team-match', matchId, async () => {
+    const { stdout } = await execFileAsync(
+      resolvePythonExecutable(),
+      ['-m', 'ml.team_predict', '--match-id', matchId, '--format', 'json'],
+      {
+        cwd: `${process.cwd()}/scripts`,
+        maxBuffer: 1024 * 1024,
+      }
+    )
 
-  return JSON.parse(stdout) as TeamMatchPredictionPayload
+    return JSON.parse(stdout) as TeamMatchPredictionPayload
+  })
 }
 
 export async function getTransferPredictionScores(
