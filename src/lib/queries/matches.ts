@@ -56,6 +56,23 @@ export async function listUpcomingMatches(league = 'ipl', limit = 5): Promise<Up
   return (data ?? []) as UpcomingMatch[]
 }
 
+export async function countRemainingMatches(league = 'ipl'): Promise<number> {
+  const supabase = await createServerSupabaseClient()
+  const today = new Date().toISOString().slice(0, 10)
+
+  const { count, error } = await supabase
+    .from('matches')
+    .select('match_id', { count: 'exact', head: true })
+    .eq('league_id', league)
+    .is('winner', null)
+    .gte('match_date', today)
+    .not('team1_id', 'is', null)
+    .not('team2_id', 'is', null)
+
+  if (error) throw error
+  return count ?? 0
+}
+
 export async function getUpcomingMatch(matchId: string): Promise<UpcomingMatch | null> {
   const supabase = await createServerSupabaseClient()
   const { data, error } = await supabase

@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server'
-import { listUpcomingMatches } from '@/lib/queries/matches'
+import { countRemainingMatches, listUpcomingMatches } from '@/lib/queries/matches'
 import { listFantasyPlayers } from '@/lib/queries/fantasy-players'
 import { getTransferState, getUserSquad } from '@/lib/queries/user-squad'
 import { getTransferPredictionScores } from '@/lib/predictions'
@@ -16,11 +16,12 @@ export async function POST() {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   }
 
-  const [squadData, transferState, allPlayers, upcomingMatches] = await Promise.all([
+  const [squadData, transferState, allPlayers, upcomingMatches, matchesRemaining] = await Promise.all([
     getUserSquad(user.id),
     getTransferState(user.id),
     listFantasyPlayers(),
     listUpcomingMatches('ipl', 3),
+    countRemainingMatches('ipl'),
   ])
 
   const squad = squadData?.players ?? []
@@ -59,17 +60,26 @@ export async function POST() {
   }))
 
   const transfersRemaining = Math.max(0, 160 - transferState.transfers_used)
+  const protectedOutgoingTeamIds = upcomingMatches
+    .slice(1)
+    .flatMap((match) => [match.team1_id, match.team2_id])
+
   const result = predictionScores.size === 0
     ? {
         swaps: [],
         captain_suggestion: null,
         vc_suggestion: null,
       }
-    : generateRecommendations(squadWithPredictions, playersWithPredictions, transfersRemaining)
+    : generateRecommendations(squadWithPredictions, playersWithPredictions, transfersRemaining, 5, {
+      protectedOutgoingTeamIds,
+      matchesRemaining,
+    })
 
   return NextResponse.json({
     ...result,
     transfers_remaining: transfersRemaining,
+    matches_remaining: matchesRemaining,
+    transfer_pressure: transfersRemaining > 0 ? matchesRemaining / transfersRemaining : null,
     fixtures_considered: predictionInput.fixtures_considered,
     scoring_available: predictionScores.size > 0,
   })

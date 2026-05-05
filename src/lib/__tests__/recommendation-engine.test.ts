@@ -80,6 +80,47 @@ describe('generateRecommendations', () => {
   })
 
   describe('budget constraint', () => {
+    it('limits incoming player credit to remaining squad budget after removing outgoing player', () => {
+      const current = squad11().map((player) => {
+        if (player.player_id === 'wk1') return { ...player, credit_value: 21 }
+        if (player.player_id === 'bat2') return { ...player, credit_value: 7, predicted_points: 20 }
+        return player
+      })
+      const unaffordableUpgrade = p({
+        player_id: 'bat-7-5cr',
+        fantasy_role: 'BAT',
+        credit_value: 7.5,
+        predicted_points: 26,
+        current_team_id: 'team-e',
+      })
+
+      const result = generateRecommendations(current, [unaffordableUpgrade], 3)
+
+      expect(result.swaps.some((swap) => swap.player_out.player_id === 'bat2')).toBe(false)
+    })
+
+    it('allows incoming player credit when unused team credit creates breathing room', () => {
+      const current = squad11().map((player) => {
+        if (player.player_id === 'wk1') return { ...player, credit_value: 19 }
+        if (player.player_id === 'bat2') return { ...player, credit_value: 7, predicted_points: 20 }
+        return player
+      })
+      const affordableUpgrade = p({
+        player_id: 'bat-8cr',
+        fantasy_role: 'BAT',
+        credit_value: 8,
+        predicted_points: 26,
+        current_team_id: 'team-e',
+      })
+
+      const result = generateRecommendations(current, [affordableUpgrade], 3)
+
+      expect(result.swaps.some((swap) => (
+        swap.player_out.player_id === 'bat2'
+        && swap.player_in.player_id === 'bat-8cr'
+      ))).toBe(true)
+    })
+
     it('allows a higher-credit incoming player when unused squad credits cover the difference', () => {
       const current = squad11().map((player) =>
         player.player_id === 'wk1'
@@ -111,6 +152,29 @@ describe('generateRecommendations', () => {
       const result = generateRecommendations(current, [expensiveBat], 3)
       const involveExpensive = result.swaps.some((s) => s.player_in.player_id === 'bat-expensive')
       expect(involveExpensive).toBe(false)
+    })
+  })
+
+  describe('fixture timing protection', () => {
+    it('does not suggest transferring out a player whose team plays in the next fixture window', () => {
+      const current = squad11().map((player) =>
+        player.player_id === 'bat4'
+          ? { ...player, current_team_id: 'team-protected', predicted_points: 0 }
+          : player
+      )
+      const replacement = p({
+        player_id: 'bat-current-match',
+        fantasy_role: 'BAT',
+        credit_value: 8,
+        predicted_points: 999,
+        current_team_id: 'team-e',
+      })
+
+      const result = generateRecommendations(current, [replacement], 3, 5, {
+        protectedOutgoingTeamIds: ['team-protected'],
+      })
+
+      expect(result.swaps.some((swap) => swap.player_out.player_id === 'bat4')).toBe(false)
     })
   })
 
@@ -179,6 +243,43 @@ describe('generateRecommendations', () => {
       const result = generateRecommendations(current, [marginalBat], 3)
       const involveMarginal = result.swaps.some((s) => s.player_in.player_id === 'bat-marginal')
       expect(involveMarginal).toBe(false)
+    })
+
+    it('allows a 6-point upgrade when transfer pressure is low', () => {
+      const current = squad11()
+      const usefulBat = p({
+        player_id: 'bat-useful',
+        fantasy_role: 'BAT',
+        predicted_points: 31,
+        credit_value: 8,
+        current_team_id: 'team-e',
+      })
+
+      const result = generateRecommendations(current, [usefulBat], 3, 5, {
+        matchesRemaining: 3,
+      })
+
+      expect(result.swaps.some((swap) => (
+        swap.player_out.player_id === 'bat4'
+        && swap.player_in.player_id === 'bat-useful'
+      ))).toBe(true)
+    })
+
+    it('rejects the same 6-point upgrade when transfers are scarcer than remaining matches', () => {
+      const current = squad11()
+      const usefulBat = p({
+        player_id: 'bat-useful',
+        fantasy_role: 'BAT',
+        predicted_points: 31,
+        credit_value: 8,
+        current_team_id: 'team-e',
+      })
+
+      const result = generateRecommendations(current, [usefulBat], 21, 5, {
+        matchesRemaining: 26,
+      })
+
+      expect(result.swaps.some((swap) => swap.player_in.player_id === 'bat-useful')).toBe(false)
     })
   })
 
