@@ -43,6 +43,7 @@ next-env.d.ts
 # cricai data
 scripts/data/
 docs/
+.superpowers/
 scripts/.venv/
 node_modules/
 .env.local
