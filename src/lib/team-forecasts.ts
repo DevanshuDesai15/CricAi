@@ -1,4 +1,5 @@
 import type { MatchSummary, TeamStanding, UpcomingMatch } from '@/lib/queries/matches'
+import type { TeamMatchPredictionPayload } from '@/lib/predictions'
 
 export interface ForecastFactor {
   label: string
@@ -130,9 +131,34 @@ function normalizeScores<T extends { score: number }>(
 export function getNextMatchWinProbability(
   match: UpcomingMatch | null | undefined,
   completedMatches: MatchSummary[],
-  standings: TeamStanding[]
+  standings: TeamStanding[],
+  modelPrediction?: TeamMatchPredictionPayload | null
 ): NextMatchWinProbability | null {
   if (!match) return null
+
+  if (
+    modelPrediction &&
+    modelPrediction.match_id === match.match_id &&
+    modelPrediction.team1_id === match.team1_id &&
+    modelPrediction.team2_id === match.team2_id
+  ) {
+    return {
+      match_id: match.match_id,
+      match_date: match.match_date,
+      venue_id: match.venue_id,
+      team1_id: match.team1_id,
+      team2_id: match.team2_id,
+      team1_probability: modelPrediction.team1_probability,
+      team2_probability: modelPrediction.team2_probability,
+      favorite_team_id: modelPrediction.favorite_team_id,
+      confidence: modelPrediction.confidence,
+      factors: [
+        { label: 'Model', value: modelPrediction.model_version },
+        { label: 'Source', value: 'Historical IPL' },
+        { label: 'Live layer', value: 'Standings fallback' },
+      ],
+    }
+  }
 
   const team1WinRate = getWinRate(match.team1_id, standings)
   const team2WinRate = getWinRate(match.team2_id, standings)

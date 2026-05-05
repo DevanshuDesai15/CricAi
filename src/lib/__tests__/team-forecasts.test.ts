@@ -74,6 +74,25 @@ describe('getNextMatchWinProbability', () => {
     expect(forecast?.team2_probability).toBe(50)
     expect(forecast?.favorite_team_id).toBe('new_team_a')
   })
+
+  it('prefers model probabilities when a model payload is available', () => {
+    const forecast = getNextMatchWinProbability(nextMatch, completedMatches, standings, {
+      match_id: 'next',
+      model_version: 'team-match-random-forest-v1',
+      generated_at: '2026-05-05T00:00:00.000Z',
+      team1_id: 'mumbai_indians',
+      team2_id: 'chennai_super_kings',
+      team1_probability: 61,
+      team2_probability: 39,
+      favorite_team_id: 'mumbai_indians',
+      confidence: 61,
+      source: 'team_match_classifier',
+    })
+
+    expect(forecast?.team1_probability).toBe(61)
+    expect(forecast?.team2_probability).toBe(39)
+    expect(forecast?.factors[0]).toEqual({ label: 'Model', value: 'team-match-random-forest-v1' })
+  })
 })
 
 describe('getSeasonWinnerOdds', () => {

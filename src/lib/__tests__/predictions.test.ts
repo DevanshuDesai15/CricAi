@@ -3,7 +3,7 @@ jest.mock('node:child_process', () => ({
 }))
 
 import { execFile } from 'node:child_process'
-import { getTransferPredictionScores, resolvePythonExecutable } from '@/lib/predictions'
+import { getTeamMatchPrediction, getTransferPredictionScores, resolvePythonExecutable } from '@/lib/predictions'
 
 const execFileMock = execFile as unknown as jest.Mock
 
@@ -77,5 +77,38 @@ describe('getTransferPredictionScores', () => {
     expect(result.fixtures_considered).toEqual(['next-match'])
     expect(result.scores.get('pbks-player')).toBe(80)
     expect(result.scores.has('srh-player')).toBe(false)
+  })
+})
+
+describe('getTeamMatchPrediction', () => {
+  afterEach(() => {
+    execFileMock.mockReset()
+  })
+
+  it('calls the team match python module and parses probability payloads', async () => {
+    execFileMock.mockImplementation((_bin, args, _options, callback) => {
+      expect(args).toEqual(['-m', 'ml.team_predict', '--match-id', 'next-match', '--format', 'json'])
+
+      callback(null, {
+        stdout: JSON.stringify({
+          match_id: 'next-match',
+          model_version: 'team-match-random-forest-v1',
+          generated_at: '2026-05-05T00:00:00.000Z',
+          team1_id: 'mumbai_indians',
+          team2_id: 'chennai_super_kings',
+          team1_probability: 61,
+          team2_probability: 39,
+          favorite_team_id: 'mumbai_indians',
+          confidence: 61,
+          source: 'team_match_classifier',
+        }),
+      })
+    })
+
+    const payload = await getTeamMatchPrediction('next-match')
+
+    expect(payload.team1_probability).toBe(61)
+    expect(payload.favorite_team_id).toBe('mumbai_indians')
+    expect(payload.source).toBe('team_match_classifier')
   })
 })

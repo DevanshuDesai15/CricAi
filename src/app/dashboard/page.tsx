@@ -3,6 +3,7 @@ import { TeamPerformanceChart } from '@/components/TeamPerformanceChart'
 import { UpcomingPredictions } from '@/components/UpcomingPredictions'
 import { NextMatchWinProbability } from '@/components/NextMatchWinProbability'
 import { SeasonWinnerOdds } from '@/components/SeasonWinnerOdds'
+import { getTeamMatchPrediction } from '@/lib/predictions'
 import { getNextMatchWinProbability, getSeasonWinnerOdds } from '@/lib/team-forecasts'
 import { 
   type LucideIcon,
@@ -310,7 +311,15 @@ export default async function DashboardPage() {
   const maxWins = standings[0]?.wins ?? 1
   const currentSeasonMatches = recentMatches.filter(match => match.season === season)
   const seasonWinnerOdds = getSeasonWinnerOdds(standings, currentSeasonMatches, upcomingMatches)
-  const nextMatchWinProbability = getNextMatchWinProbability(upcomingMatches[0], currentSeasonMatches, standings)
+  const teamModelPrediction = upcomingMatches[0]
+    ? await getTeamMatchPrediction(upcomingMatches[0].match_id).catch(() => null)
+    : null
+  const nextMatchWinProbability = getNextMatchWinProbability(
+    upcomingMatches[0],
+    currentSeasonMatches,
+    standings,
+    teamModelPrediction
+  )
 
   const chartData = standings.slice(0, 8).map(t => ({
     name: getTeamConfig(t.team_id).abbr,

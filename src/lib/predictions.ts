@@ -24,6 +24,19 @@ export interface MatchPredictionPayload {
   predictions: MatchPredictionRow[]
 }
 
+export interface TeamMatchPredictionPayload {
+  match_id: string
+  model_version: string
+  generated_at: string
+  team1_id: string
+  team2_id: string
+  team1_probability: number
+  team2_probability: number
+  favorite_team_id: string
+  confidence: number
+  source: string
+}
+
 export interface TransferPredictionScores {
   scores: Map<string, number>
   fixtures_considered: string[]
@@ -54,6 +67,19 @@ export async function getMatchPredictions(matchId: string): Promise<MatchPredict
   )
 
   return JSON.parse(stdout) as MatchPredictionPayload
+}
+
+export async function getTeamMatchPrediction(matchId: string): Promise<TeamMatchPredictionPayload> {
+  const { stdout } = await execFileAsync(
+    resolvePythonExecutable(),
+    ['-m', 'ml.team_predict', '--match-id', matchId, '--format', 'json'],
+    {
+      cwd: `${process.cwd()}/scripts`,
+      maxBuffer: 1024 * 1024,
+    }
+  )
+
+  return JSON.parse(stdout) as TeamMatchPredictionPayload
 }
 
 export async function getTransferPredictionScores(
