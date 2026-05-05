@@ -4,6 +4,7 @@ import { UpcomingPredictions } from '@/components/UpcomingPredictions'
 import { NextMatchWinProbability } from '@/components/NextMatchWinProbability'
 import { SeasonWinnerOdds } from '@/components/SeasonWinnerOdds'
 import { getTeamMatchPrediction } from '@/lib/predictions'
+import { recordTeamMatchPredictionAudit } from '@/lib/team-prediction-audits'
 import { getNextMatchWinProbability, getSeasonWinnerOdds } from '@/lib/team-forecasts'
 import { 
   type LucideIcon,
@@ -320,6 +321,18 @@ export default async function DashboardPage() {
     standings,
     teamModelPrediction
   )
+
+  if (upcomingMatches[0] && nextMatchWinProbability) {
+    await recordTeamMatchPredictionAudit(
+      upcomingMatches[0],
+      nextMatchWinProbability,
+      {
+        modelVersion: teamModelPrediction?.model_version ?? 'deterministic-live-v1',
+        predictionSource: teamModelPrediction?.source ?? 'deterministic_live_forecast',
+        generatedAt: teamModelPrediction?.generated_at,
+      }
+    ).catch(() => null)
+  }
 
   const chartData = standings.slice(0, 8).map(t => ({
     name: getTeamConfig(t.team_id).abbr,
