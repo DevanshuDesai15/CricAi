@@ -255,8 +255,8 @@ export default async function DashboardPage() {
   const [season, standings, recentMatches, upcomingMatches] = await Promise.all([
     getLatestIPLSeason(),
     getIPLStandings(),
-    listRecentMatches('ipl', 12),
-    listUpcomingMatches('ipl', 5),
+    listRecentMatches('ipl', 80),
+    listUpcomingMatches('ipl', 80),
   ])
 
   const totalMatches = standings.reduce((s, t) => s + t.played, 0) / 2 | 0

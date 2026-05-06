@@ -34,8 +34,8 @@ export interface SeasonWinnerOdds {
   teams: SeasonWinnerOddsTeam[]
 }
 
-const BASELINE_SCORE = 6
 const RECENT_FORM_WINDOW = 5
+const SEASON_SIMULATION_COUNT = 10000
 
 function clamp(value: number, min: number, max: number): number {
   return Math.min(max, Math.max(min, value))
@@ -94,38 +94,6 @@ function getHeadToHeadRate(
 function formatSignedPoints(value: number): string {
   if (Math.abs(value) < 0.05) return 'Even'
   return `${value > 0 ? '+' : ''}${round1(value)} pts`
-}
-
-function getRemainingMatchesByTeam(upcomingMatches: UpcomingMatch[]): Map<string, number> {
-  const counts = new Map<string, number>()
-
-  for (const match of upcomingMatches) {
-    counts.set(match.team1_id, (counts.get(match.team1_id) ?? 0) + 1)
-    counts.set(match.team2_id, (counts.get(match.team2_id) ?? 0) + 1)
-  }
-
-  return counts
-}
-
-function normalizeScores<T extends { score: number }>(
-  rows: T[]
-): Array<T & { probability: number }> {
-  const totalScore = rows.reduce((sum, row) => sum + row.score, 0)
-  if (rows.length === 0 || totalScore <= 0) return []
-
-  const normalized = rows.map(row => ({
-    ...row,
-    probability: round1((row.score / totalScore) * 100),
-  }))
-  const totalRounded = normalized.reduce((sum, row) => sum + row.probability, 0)
-  const delta = round1(100 - totalRounded)
-
-  if (normalized.length > 0 && Math.abs(delta) > 0) {
-    const last = normalized[normalized.length - 1]
-    last.probability = round1(last.probability + delta)
-  }
-
-  return normalized
 }
 
 export function getNextMatchWinProbability(
@@ -191,6 +159,26 @@ export function getNextMatchWinProbability(
   }
 }
 
+function createSeededRandom(seed = 2026): () => number {
+  let state = seed >>> 0
+
+  return () => {
+    state = (state * 1664525 + 1013904223) >>> 0
+    return state / 0x100000000
+  }
+}
+
+function normalizeRoundedProbabilities<T extends { title_probability: number }>(rows: T[]): T[] {
+  const totalRounded = rows.reduce((sum, row) => sum + row.title_probability, 0)
+  const delta = round1(100 - totalRounded)
+
+  if (rows.length > 0 && Math.abs(delta) > 0) {
+    rows[0].title_probability = round1(rows[0].title_probability + delta)
+  }
+
+  return rows
+}
+
 export function getSeasonWinnerOdds(
   standings: TeamStanding[],
   completedMatches: MatchSummary[],
@@ -204,37 +192,57 @@ export function getSeasonWinnerOdds(
     }
   }
 
-  const remainingMatches = getRemainingMatchesByTeam(upcomingMatches)
-  const maxPoints = Math.max(...standings.map(team => team.wins * 2), 1)
-  const maxRemaining = Math.max(...standings.map(team => remainingMatches.get(team.team_id) ?? 0), 1)
+  const currentPointsByTeam = new Map(standings.map(team => [team.team_id, team.wins * 2]))
+  const titleWinsByTeam = new Map(standings.map(team => [team.team_id, 0]))
+  const projectedPointsByTeam = new Map(standings.map(team => [team.team_id, 0]))
+  const matchForecasts = upcomingMatches.map(match => ({
+    match,
+    forecast: getNextMatchWinProbability(match, completedMatches, standings),
+  }))
+  const random = createSeededRandom()
 
-  const scored = standings.map(team => {
-    const currentPoints = team.wins * 2
-    const winRate = team.played > 0 ? team.wins / team.played : 0.5
-    const recentForm = getRecentForm(team.team_id, completedMatches)
-    const remaining = remainingMatches.get(team.team_id) ?? 0
-    const projectedPoints = round1(currentPoints + remaining * winRate * 2)
-    const score =
-      BASELINE_SCORE +
-      (currentPoints / maxPoints) * 42 +
-      winRate * 24 +
-      recentForm * 18 +
-      (remaining / maxRemaining) * 10
+  for (let simulation = 0; simulation < SEASON_SIMULATION_COUNT; simulation += 1) {
+    const points = new Map(currentPointsByTeam)
 
-    return {
-      team_id: team.team_id,
-      current_points: currentPoints,
-      projected_points: projectedPoints,
-      form_label: `${Math.round(recentForm * 100)}% form`,
-      score,
+    for (const { match, forecast } of matchForecasts) {
+      const team1WinProbability = (forecast?.team1_probability ?? 50) / 100
+      const winner = random() < team1WinProbability ? match.team1_id : match.team2_id
+      points.set(winner, (points.get(winner) ?? 0) + 2)
     }
-  }).sort((left, right) => right.score - left.score)
 
-  const normalized = normalizeScores(scored)
-  const teams = normalized.map((team, index) => ({
+    for (const team of standings) {
+      projectedPointsByTeam.set(
+        team.team_id,
+        (projectedPointsByTeam.get(team.team_id) ?? 0) + (points.get(team.team_id) ?? 0)
+      )
+    }
+
+    const maxPoints = Math.max(...Array.from(points.values()))
+    const tiedTeams = standings.filter(team => (points.get(team.team_id) ?? 0) === maxPoints)
+    const titleShare = 1 / tiedTeams.length
+
+    for (const team of tiedTeams) {
+      titleWinsByTeam.set(team.team_id, (titleWinsByTeam.get(team.team_id) ?? 0) + titleShare)
+    }
+  }
+
+  const simulated = standings.map(team => ({
+    team_id: team.team_id,
+    current_points: currentPointsByTeam.get(team.team_id) ?? 0,
+    projected_points: round1((projectedPointsByTeam.get(team.team_id) ?? 0) / SEASON_SIMULATION_COUNT),
+    form_label: `${Math.round(getRecentForm(team.team_id, completedMatches) * 100)}% form`,
+    title_probability: round1(((titleWinsByTeam.get(team.team_id) ?? 0) / SEASON_SIMULATION_COUNT) * 100),
+  })).sort((left, right) =>
+    right.title_probability - left.title_probability ||
+    right.projected_points - left.projected_points ||
+    right.current_points - left.current_points ||
+    left.team_id.localeCompare(right.team_id)
+  )
+
+  const teams = normalizeRoundedProbabilities(simulated).map((team, index) => ({
     rank: index + 1,
     team_id: team.team_id,
-    title_probability: team.probability,
+    title_probability: team.title_probability,
     projected_points: team.projected_points,
     current_points: team.current_points,
     form_label: team.form_label,

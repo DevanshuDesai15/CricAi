@@ -115,6 +115,75 @@ describe('getSeasonWinnerOdds', () => {
     expect(total).toBeCloseTo(100, 1)
   })
 
+  it('is deterministic for the same standings and remaining fixtures', () => {
+    const first = getSeasonWinnerOdds(standings, completedMatches, [nextMatch])
+    const second = getSeasonWinnerOdds(standings, completedMatches, [nextMatch])
+
+    expect(first.teams).toEqual(second.teams)
+  })
+
+  it('lets the remaining schedule affect projected title chances', () => {
+    const tightStandings: TeamStanding[] = [
+      { team_id: 'front_runner', wins: 5, losses: 0, played: 5 },
+      { team_id: 'chaser', wins: 4, losses: 1, played: 5 },
+      { team_id: 'struggler', wins: 0, losses: 5, played: 5 },
+    ]
+    const tightCompletedMatches: MatchSummary[] = [
+      {
+        match_id: 'played-1',
+        match_date: '2026-04-01',
+        team1_id: 'front_runner',
+        team2_id: 'chaser',
+        winner: 'front_runner',
+        venue_id: null,
+        season: '2026',
+      },
+      {
+        match_id: 'played-2',
+        match_date: '2026-04-02',
+        team1_id: 'chaser',
+        team2_id: 'struggler',
+        winner: 'chaser',
+        venue_id: null,
+        season: '2026',
+      },
+    ]
+    const favorableRun: UpcomingMatch[] = [
+      {
+        match_id: 'future-1',
+        match_date: '2026-04-10',
+        team1_id: 'chaser',
+        team2_id: 'struggler',
+        winner: null,
+        venue_id: null,
+        season: '2026',
+      },
+      {
+        match_id: 'future-2',
+        match_date: '2026-04-11',
+        team1_id: 'chaser',
+        team2_id: 'struggler',
+        winner: null,
+        venue_id: null,
+        season: '2026',
+      },
+      {
+        match_id: 'future-3',
+        match_date: '2026-04-12',
+        team1_id: 'chaser',
+        team2_id: 'struggler',
+        winner: null,
+        venue_id: null,
+        season: '2026',
+      },
+    ]
+
+    const forecast = getSeasonWinnerOdds(tightStandings, tightCompletedMatches, favorableRun)
+
+    expect(forecast.favorite_team_id).toBe('chaser')
+    expect(forecast.teams[0].projected_points).toBeGreaterThan(forecast.teams[1].projected_points)
+  })
+
   it('returns an empty forecast when standings are unavailable', () => {
     const forecast = getSeasonWinnerOdds([], [], [])
 

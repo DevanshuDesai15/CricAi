@@ -119,7 +119,7 @@ export function SeasonWinnerOdds({
       </div>
 
       <div className="px-4 py-3 border-t border-border-subtle text-[10px] text-text-muted leading-relaxed">
-        Live dashboard forecast using standings, recent form, and remaining fixtures.
+        Monte Carlo season forecast using standings, recent form, and remaining fixtures.
       </div>
     </div>
   )
