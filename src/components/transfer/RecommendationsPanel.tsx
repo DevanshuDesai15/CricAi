@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation'
 import { Crown, Sparkles, Zap, Loader2 } from 'lucide-react'
 import type { UserSquadPlayer } from '@/lib/queries/user-squad'
 import type { RecommendationResult, SwapSuggestion } from '@/lib/recommendation-engine'
+import { getTransferGuidance } from '@/lib/transfer-guidance'
 import { SwapCard } from '@/components/transfer/SwapCard'
 
 interface RecommendationsPanelProps {
@@ -15,6 +16,8 @@ interface RecommendationsPanelProps {
 
 interface RecommendationApiResponse extends RecommendationResult {
   transfers_remaining: number
+  matches_remaining: number | null
+  transfer_pressure: number | null
   fixtures_considered: string[]
   scoring_available: boolean
 }
@@ -74,6 +77,11 @@ export function RecommendationsPanel({
     const base = result?.transfers_remaining ?? Math.max(0, 160 - initialTransfersUsed)
     return Math.max(0, base - appliedSwaps.length)
   }, [appliedSwaps.length, initialTransfersUsed, result?.transfers_remaining])
+
+  const transferGuidance = useMemo(() => getTransferGuidance({
+    transfersRemaining,
+    matchesRemaining: result?.matches_remaining ?? null,
+  }), [result?.matches_remaining, transfersRemaining])
 
   function applySwap(swap: SwapSuggestion) {
     if (appliedSwaps.some((applied) => applied.player_out.player_id === swap.player_out.player_id)) return
@@ -194,6 +202,16 @@ export function RecommendationsPanel({
           {transfersRemaining} / 160 left
         </div>
       </div>
+
+      {transferGuidance && (
+        <div className={`rounded-xl border px-4 py-3 text-xs leading-relaxed ${
+          transferGuidance.tone === 'caution'
+            ? 'border-amber-500/25 bg-amber-500/8 text-amber-100'
+            : 'border-brand-green/25 bg-brand-green-dim text-brand-green'
+        }`}>
+          {transferGuidance.message}
+        </div>
+      )}
 
       {/* Swap cards */}
       {result.swaps.map((swap) => (
