@@ -184,6 +184,77 @@ describe('getSeasonWinnerOdds', () => {
     expect(forecast.teams[0].projected_points).toBeGreaterThan(forecast.teams[1].projected_points)
   })
 
+  it('uses trained model probabilities for remaining fixture simulations when provided', () => {
+    const modelDrivenStandings: TeamStanding[] = [
+      { team_id: 'alpha', wins: 4, losses: 1, played: 5 },
+      { team_id: 'beta', wins: 4, losses: 1, played: 5 },
+    ]
+    const futureMatch: UpcomingMatch = {
+      match_id: 'model-future',
+      match_date: '2026-04-10',
+      team1_id: 'alpha',
+      team2_id: 'beta',
+      winner: null,
+      venue_id: null,
+      season: '2026',
+    }
+
+    const forecast = getSeasonWinnerOdds(modelDrivenStandings, [], [futureMatch], new Map([
+      ['model-future', {
+        match_id: 'model-future',
+        model_version: 'team-match-gradient-boosting-v1',
+        generated_at: '2026-05-06T00:00:00.000Z',
+        team1_id: 'alpha',
+        team2_id: 'beta',
+        team1_probability: 5,
+        team2_probability: 95,
+        favorite_team_id: 'beta',
+        confidence: 95,
+        source: 'team_match_classifier',
+      }],
+    ]))
+
+    expect(forecast.favorite_team_id).toBe('beta')
+    expect(forecast.teams[0].title_probability).toBeGreaterThan(90)
+  })
+
+  it('gives playoff teams title odds even when they are not league-table leaders', () => {
+    const playoffStandings: TeamStanding[] = [
+      { team_id: 'leader', wins: 7, losses: 3, played: 10 },
+      { team_id: 'second_seed', wins: 6, losses: 4, played: 10 },
+      { team_id: 'rcb', wins: 6, losses: 4, played: 10 },
+      { team_id: 'fourth_seed', wins: 5, losses: 5, played: 10 },
+      { team_id: 'outside_playoffs', wins: 4, losses: 6, played: 10 },
+    ]
+
+    const forecast = getSeasonWinnerOdds(playoffStandings, [], [])
+    const rcb = forecast.teams.find(team => team.team_id === 'rcb')
+    const outsidePlayoffs = forecast.teams.find(team => team.team_id === 'outside_playoffs')
+
+    expect(rcb?.title_probability).toBeGreaterThan(0)
+    expect(outsidePlayoffs?.title_probability).toBe(0)
+  })
+
+  it('does not lock tied-point teams out of playoffs only because they are lower in current standings order', () => {
+    const tiedStandings: TeamStanding[] = [
+      { team_id: 'pbks', wins: 6, losses: 4, played: 10 },
+      { team_id: 'rr', wins: 6, losses: 4, played: 10 },
+      { team_id: 'gt', wins: 6, losses: 4, played: 10 },
+      { team_id: 'srh', wins: 6, losses: 4, played: 10 },
+      { team_id: 'csk', wins: 5, losses: 5, played: 10 },
+      { team_id: 'dc', wins: 4, losses: 6, played: 10 },
+      { team_id: 'rcb', wins: 6, losses: 4, played: 10 },
+      { team_id: 'kkr', wins: 3, losses: 7, played: 10 },
+      { team_id: 'mi', wins: 3, losses: 7, played: 10 },
+      { team_id: 'lsg', wins: 2, losses: 8, played: 10 },
+    ]
+
+    const forecast = getSeasonWinnerOdds(tiedStandings, [], [])
+    const rcb = forecast.teams.find(team => team.team_id === 'rcb')
+
+    expect(rcb?.title_probability).toBeGreaterThan(0)
+  })
+
   it('returns an empty forecast when standings are unavailable', () => {
     const forecast = getSeasonWinnerOdds([], [], [])
 

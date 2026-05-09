@@ -4,6 +4,7 @@ import { NextMatchWinProbabilityWithModel } from '@/components/NextMatchWinProba
 import { SeasonWinnerOdds } from '@/components/SeasonWinnerOdds'
 import { getNextMatchWinProbability, getSeasonWinnerOdds } from '@/lib/team-forecasts'
 import { formatTeamName, getTeamConfig } from '@/lib/team-display'
+import { getTeamMatchPrediction, type TeamMatchPredictionPayload } from '@/lib/predictions'
 import { 
   type LucideIcon,
   Calendar, 
@@ -16,6 +17,8 @@ import {
 } from 'lucide-react'
 
 export const dynamic = 'force-dynamic'
+
+const TEAM_MODEL_PREDICTION_CONCURRENCY = 4
 
 // ── Sub-components ────────────────────────────────────────────────────────
 
@@ -34,6 +37,29 @@ function TeamAvatar({ teamId, size = 36 }: { teamId: string; size?: number }) {
       {cfg.abbr.slice(0, 3)}
     </div>
   )
+}
+
+async function getTeamModelPredictions(
+  upcomingMatches: { match_id: string }[]
+): Promise<Map<string, TeamMatchPredictionPayload>> {
+  const entries: Array<readonly [string, TeamMatchPredictionPayload] | null> = []
+
+  for (let index = 0; index < upcomingMatches.length; index += TEAM_MODEL_PREDICTION_CONCURRENCY) {
+    const batch = upcomingMatches.slice(index, index + TEAM_MODEL_PREDICTION_CONCURRENCY)
+    const batchEntries = await Promise.all(batch.map(async match => {
+      try {
+        const prediction = await getTeamMatchPrediction(match.match_id)
+        return [match.match_id, prediction] as const
+      } catch (error) {
+        console.warn('[dashboard] team match prediction failed', match.match_id, error)
+        return null
+      }
+    }))
+
+    entries.push(...batchEntries)
+  }
+
+  return new Map(entries.filter((entry): entry is readonly [string, TeamMatchPredictionPayload] => entry !== null))
 }
 
 function SectionHeader({ title, tag, right, icon: Icon }: { title: string; tag?: string; right?: React.ReactNode; icon?: LucideIcon }) {
@@ -264,11 +290,18 @@ export default async function DashboardPage() {
   const topTeamCfg = topTeam ? getTeamConfig(topTeam.team_id) : null
   const maxWins = standings[0]?.wins ?? 1
   const currentSeasonMatches = recentMatches.filter(match => match.season === season)
-  const seasonWinnerOdds = getSeasonWinnerOdds(standings, currentSeasonMatches, upcomingMatches)
+  const teamModelPredictions = await getTeamModelPredictions(upcomingMatches)
+  const seasonWinnerOdds = getSeasonWinnerOdds(
+    standings,
+    currentSeasonMatches,
+    upcomingMatches,
+    teamModelPredictions
+  )
   const nextMatchWinProbability = getNextMatchWinProbability(
     upcomingMatches[0],
     currentSeasonMatches,
-    standings
+    standings,
+    upcomingMatches[0] ? teamModelPredictions.get(upcomingMatches[0].match_id) : undefined
   )
 
   const chartData = standings.slice(0, 8).map(t => ({

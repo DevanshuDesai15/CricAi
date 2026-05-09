@@ -1,4 +1,4 @@
-import { createServerSupabaseClient } from '@/lib/supabase-server'
+import { createSupabaseServiceRoleClient } from '@/lib/supabase-server'
 import type { UpcomingMatch } from '@/lib/queries/matches'
 import type { NextMatchWinProbability } from '@/lib/team-forecasts'
 
@@ -88,7 +88,7 @@ export async function recordTeamMatchPredictionAudit(
   const row = buildTeamMatchPredictionAuditRow(match, forecast, options)
   if (!row) return
 
-  const supabase = await createServerSupabaseClient()
+  const supabase = createSupabaseServiceRoleClient()
   const { error } = await supabase
     .from('team_match_prediction_audits')
     .upsert(row, { onConflict: 'match_id,model_version,prediction_source' })
@@ -97,7 +97,7 @@ export async function recordTeamMatchPredictionAudit(
 }
 
 export async function resolveTeamMatchPredictionAudits(): Promise<number> {
-  const supabase = await createServerSupabaseClient()
+  const supabase = createSupabaseServiceRoleClient()
   const { data: audits, error: auditError } = await supabase
     .from('team_match_prediction_audits')
     .select('id, match_id, favorite_team_id')

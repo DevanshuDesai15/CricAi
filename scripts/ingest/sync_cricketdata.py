@@ -44,7 +44,8 @@ def get_existing_api_match_ids(supabase, season: str) -> set:
     for row in res.data:
         result = str(row.get("result") or "")
         is_seeded_placeholder = result.startswith("Match starts")
-        if row.get("winner") or (result and not is_seeded_placeholder):
+        is_completed_without_winner = result in {"tie", "no result"}
+        if row.get("winner") or (is_completed_without_winner and not is_seeded_placeholder):
             candidate_ids.append(row["match_id"])
 
     if not candidate_ids:

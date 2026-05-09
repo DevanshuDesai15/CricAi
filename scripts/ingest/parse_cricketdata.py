@@ -33,12 +33,18 @@ def _normalize_winner(raw_winner: str, teams_raw: list[str]) -> Optional[str]:
         return None
 
     normalized = slugify(winner)
-    valid_team_ids = {slugify(team) for team in teams_raw}
     if normalized in {"no_winner", "none", "null"}:
         return None
-    if normalized not in valid_team_ids:
-        return None
-    return normalized
+
+    team_lookup = {}
+    for team in teams_raw:
+        team_id = slugify(team)
+        team_lookup[team_id] = team_id
+        acronym = "".join(word[0] for word in re.findall(r"[A-Za-z0-9]+", team)).lower()
+        if acronym:
+            team_lookup[acronym] = team_id
+
+    return team_lookup.get(normalized)
 
 
 def _parse_dismissal(

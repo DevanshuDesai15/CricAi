@@ -179,10 +179,81 @@ function normalizeRoundedProbabilities<T extends { title_probability: number }>(
   return rows
 }
 
+function getPlayoffMatchWinner(
+  team1Id: string,
+  team2Id: string,
+  completedMatches: MatchSummary[],
+  standings: TeamStanding[],
+  random: () => number
+): string {
+  const forecast = getNextMatchWinProbability(
+    {
+      match_id: `playoff-${team1Id}-${team2Id}`,
+      match_date: 'playoffs',
+      team1_id: team1Id,
+      team2_id: team2Id,
+      winner: null,
+      venue_id: null,
+      season: 'playoffs',
+    },
+    completedMatches,
+    standings
+  )
+  const team1WinProbability = (forecast?.team1_probability ?? 50) / 100
+  return random() < team1WinProbability ? team1Id : team2Id
+}
+
+function getPlayoffChampion(
+  playoffTeams: string[],
+  completedMatches: MatchSummary[],
+  standings: TeamStanding[],
+  random: () => number
+): string {
+  const [seed1, seed2, seed3, seed4] = playoffTeams
+  const qualifier1Winner = getPlayoffMatchWinner(seed1, seed2, completedMatches, standings, random)
+  const qualifier1Loser = qualifier1Winner === seed1 ? seed2 : seed1
+  const eliminatorWinner = getPlayoffMatchWinner(seed3, seed4, completedMatches, standings, random)
+  const qualifier2Winner = getPlayoffMatchWinner(qualifier1Loser, eliminatorWinner, completedMatches, standings, random)
+
+  return getPlayoffMatchWinner(qualifier1Winner, qualifier2Winner, completedMatches, standings, random)
+}
+
+function shuffle<T>(items: T[], random: () => number): T[] {
+  const shuffled = [...items]
+
+  for (let index = shuffled.length - 1; index > 0; index -= 1) {
+    const swapIndex = Math.floor(random() * (index + 1))
+    const current = shuffled[index]
+    shuffled[index] = shuffled[swapIndex]
+    shuffled[swapIndex] = current
+  }
+
+  return shuffled
+}
+
+function getPlayoffTeams(
+  standings: TeamStanding[],
+  points: Map<string, number>,
+  random: () => number
+): string[] {
+  const pointGroups = new Map<number, string[]>()
+
+  for (const team of standings) {
+    const teamPoints = points.get(team.team_id) ?? 0
+    pointGroups.set(teamPoints, [...(pointGroups.get(teamPoints) ?? []), team.team_id])
+  }
+
+  return [...pointGroups.entries()]
+    .sort(([leftPoints], [rightPoints]) => rightPoints - leftPoints)
+    .flatMap(([, teamIds]) => shuffle(teamIds, random))
+    .slice(0, 4)
+}
+
 export function getSeasonWinnerOdds(
   standings: TeamStanding[],
   completedMatches: MatchSummary[],
-  upcomingMatches: UpcomingMatch[]
+  upcomingMatches: UpcomingMatch[],
+  modelPredictionsByMatchId: Map<string, TeamMatchPredictionPayload> = new Map()
 ): SeasonWinnerOdds {
   if (standings.length === 0) {
     return {
@@ -197,7 +268,12 @@ export function getSeasonWinnerOdds(
   const projectedPointsByTeam = new Map(standings.map(team => [team.team_id, 0]))
   const matchForecasts = upcomingMatches.map(match => ({
     match,
-    forecast: getNextMatchWinProbability(match, completedMatches, standings),
+    forecast: getNextMatchWinProbability(
+      match,
+      completedMatches,
+      standings,
+      modelPredictionsByMatchId.get(match.match_id)
+    ),
   }))
   const random = createSeededRandom()
 
@@ -217,12 +293,18 @@ export function getSeasonWinnerOdds(
       )
     }
 
-    const maxPoints = Math.max(...Array.from(points.values()))
-    const tiedTeams = standings.filter(team => (points.get(team.team_id) ?? 0) === maxPoints)
-    const titleShare = 1 / tiedTeams.length
+    if (standings.length >= 4) {
+      const playoffTeams = getPlayoffTeams(standings, points, random)
+      const champion = getPlayoffChampion(playoffTeams, completedMatches, standings, random)
+      titleWinsByTeam.set(champion, (titleWinsByTeam.get(champion) ?? 0) + 1)
+    } else {
+      const maxPoints = Math.max(...Array.from(points.values()))
+      const tiedTeams = standings.filter(team => (points.get(team.team_id) ?? 0) === maxPoints)
+      const titleShare = 1 / tiedTeams.length
 
-    for (const team of tiedTeams) {
-      titleWinsByTeam.set(team.team_id, (titleWinsByTeam.get(team.team_id) ?? 0) + titleShare)
+      for (const team of tiedTeams) {
+        titleWinsByTeam.set(team.team_id, (titleWinsByTeam.get(team.team_id) ?? 0) + titleShare)
+      }
     }
   }
 

@@ -80,6 +80,23 @@ def test_existing_api_match_ids_excludes_metadata_only_winner_rows():
     assert get_existing_api_match_ids(supabase, "2026") == set()
 
 
+def test_existing_api_match_ids_retries_normal_result_rows_without_winner():
+    supabase = FakeSupabase({
+        "matches": [
+            {
+                "match_id": "api_missing_winner",
+                "winner": None,
+                "result": "normal",
+            },
+        ],
+        "player_match_stats": [
+            {"match_id": "api_missing_winner"},
+        ],
+    })
+
+    assert get_existing_api_match_ids(supabase, "2026") == set()
+
+
 def test_build_player_stub_rows_includes_every_unique_player_id():
     stats = [
         {"player_id": "canonical_missing"},

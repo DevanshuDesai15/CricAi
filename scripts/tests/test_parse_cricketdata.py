@@ -87,6 +87,23 @@ def test_match_winner_is_slugified():
     assert result["match"]["winner"] == "chennai_super_kings"
 
 
+def test_match_winner_acronym_in_status_resolves_to_team_id():
+    match_info = {
+        "id": "lsg-rcb",
+        "venue": "Ekana Cricket Stadium",
+        "teams": ["Lucknow Super Giants", "Royal Challengers Bengaluru"],
+        "matchWinner": None,
+        "tossWinner": "Lucknow Super Giants",
+        "tossChoice": "bat",
+        "status": "LSG won by 9 runs (19 Overs game due to rain, DLS Target 213)",
+        "date": "2026-05-07",
+    }
+
+    result = parse_match(match_info, {"scorecard": []})
+
+    assert result["match"]["winner"] == "lucknow_super_giants"
+
+
 def test_match_toss_fields():
     result = parse_match(MATCH_INFO, SCORECARD)
     m = result["match"]

@@ -42,7 +42,13 @@ export async function GET(
         predictionSource: modelPrediction.source,
         generatedAt: modelPrediction.generated_at,
       })
-    } catch {}
+    } catch (auditError) {
+      console.warn(
+        '[team-match-prediction] failed to record audit',
+        match.match_id,
+        auditError
+      )
+    }
 
     return NextResponse.json({
       prediction: modelPrediction,

@@ -2,6 +2,7 @@ import pandas as pd
 
 from ml.team_predict import (
     TEAM_MODEL_FEATURES,
+    build_completed_match_audit_row,
     build_matchup_feature_row,
     build_team_training_frame,
     prediction_to_response,
@@ -132,3 +133,29 @@ def test_prediction_to_response_shapes_probability_payload():
     assert payload["team2_probability"] == 38
     assert payload["favorite_team_id"] == "mumbai_indians"
     assert payload["confidence"] == 62
+
+
+def test_build_completed_match_audit_row_scores_actual_winner():
+    row = {
+        "match_id": "finished",
+        "season": "2026",
+        "match_date": "2026-05-06",
+        "team1_id": "sunrisers_hyderabad",
+        "team2_id": "punjab_kings",
+        "winner": "punjab_kings",
+    }
+
+    audit = build_completed_match_audit_row(
+        row,
+        model_version="team-match-test-v1",
+        team1_probability=0.57,
+        generated_at="2026-05-06T00:00:00+00:00",
+    )
+
+    assert audit["match_id"] == "finished"
+    assert audit["team1_probability"] == 57
+    assert audit["team2_probability"] == 43
+    assert audit["favorite_team_id"] == "sunrisers_hyderabad"
+    assert audit["actual_winner"] == "punjab_kings"
+    assert audit["was_correct"] is False
+    assert audit["resolved_at"] == "2026-05-06T00:00:00+00:00"

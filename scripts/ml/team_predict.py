@@ -370,6 +370,40 @@ def prediction_to_response(
     }
 
 
+def build_completed_match_audit_row(
+    match_row: dict,
+    model_version: str,
+    team1_probability: float,
+    generated_at: str,
+    prediction_source: str = "team_match_classifier_backfill",
+) -> dict:
+    payload = prediction_to_response(
+        match_id=str(match_row["match_id"]),
+        model_version=model_version,
+        team1_id=str(match_row["team1_id"]),
+        team2_id=str(match_row["team2_id"]),
+        team1_probability=team1_probability,
+    )
+    actual_winner = str(match_row["winner"])
+
+    return {
+        "match_id": payload["match_id"],
+        "model_version": payload["model_version"],
+        "team1_id": payload["team1_id"],
+        "team2_id": payload["team2_id"],
+        "team1_probability": payload["team1_probability"],
+        "team2_probability": payload["team2_probability"],
+        "favorite_team_id": payload["favorite_team_id"],
+        "confidence": payload["confidence"],
+        "prediction_source": prediction_source,
+        "generated_at": generated_at,
+        "actual_winner": actual_winner,
+        "was_correct": payload["favorite_team_id"] == actual_winner,
+        "resolved_at": generated_at,
+        "updated_at": generated_at,
+    }
+
+
 def predict_match(match_id: str, league_id: str = "ipl") -> dict:
     metadata = load_metadata()
     pipeline = load_pipeline()
@@ -400,9 +434,60 @@ def predict_match(match_id: str, league_id: str = "ipl") -> dict:
     )
 
 
+def backfill_completed_match_audits(limit: int = 4, league_id: str = "ipl") -> list[dict]:
+    metadata = load_metadata()
+    pipeline = load_pipeline()
+    supabase = create_supabase_client()
+    match_rows = fetch_match_rows(league_id)
+    matches_df = pd.DataFrame(match_rows)
+    if matches_df.empty:
+        return []
+
+    completed = matches_df[
+        matches_df["winner"].notna()
+        & matches_df["team1_id"].notna()
+        & matches_df["team2_id"].notna()
+        & matches_df["match_date"].notna()
+    ].sort_values(["match_date", "match_id"], ascending=[False, False]).head(limit)
+
+    generated_at = datetime.now(timezone.utc).isoformat()
+    audit_rows = []
+    for _, row in completed.iterrows():
+        row_dict = row.to_dict()
+        features = pd.DataFrame([
+            build_matchup_feature_row(
+                matches_df=matches_df,
+                match_id=row_dict["match_id"],
+                season=row_dict["season"],
+                match_date=row_dict["match_date"],
+                venue_id=row_dict.get("venue_id"),
+                team1_id=row_dict["team1_id"],
+                team2_id=row_dict["team2_id"],
+            )
+        ])
+        team1_probability = _positive_class_probability(pipeline, features)
+        audit_rows.append(build_completed_match_audit_row(
+            row_dict,
+            model_version=metadata["model_version"],
+            team1_probability=team1_probability,
+            generated_at=generated_at,
+        ))
+
+    if not audit_rows:
+        return []
+
+    response = supabase.table("team_match_prediction_audits").upsert(
+        audit_rows,
+        on_conflict="match_id,model_version,prediction_source",
+    ).execute()
+    return response.data or audit_rows
+
+
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("--train", action="store_true")
+    parser.add_argument("--backfill-audits", action="store_true")
+    parser.add_argument("--limit", type=int, default=4)
     parser.add_argument("--match-id")
     parser.add_argument("--league-id", default="ipl")
     parser.add_argument("--format", choices=["table", "json"], default="table")
@@ -414,8 +499,21 @@ def main():
         print(json.dumps(metadata, indent=2))
         return
 
+    if args.backfill_audits:
+        rows = backfill_completed_match_audits(limit=args.limit, league_id=args.league_id)
+        if args.format == "json":
+            print(json.dumps({"inserted": len(rows), "rows": rows}, indent=2))
+            return
+        print(f"Backfilled {len(rows)} team match prediction audit rows")
+        for row in rows:
+            print(
+                f"{row['match_id']}: predicted {row['favorite_team_id']}, "
+                f"actual {row['actual_winner']}, correct={row['was_correct']}"
+            )
+        return
+
     if not args.match_id:
-        parser.error("--match-id is required unless --train is provided")
+        parser.error("--match-id is required unless --train or --backfill-audits is provided")
 
     payload = predict_match(args.match_id, args.league_id)
     if args.format == "json":

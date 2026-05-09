@@ -1,9 +1,18 @@
 import {
   buildTeamMatchPredictionAuditRow,
+  recordTeamMatchPredictionAudit,
   resolveTeamMatchPredictionAuditRow,
 } from '@/lib/team-prediction-audits'
 import type { UpcomingMatch } from '@/lib/queries/matches'
 import type { NextMatchWinProbability } from '@/lib/team-forecasts'
+
+jest.mock('@/lib/supabase-server', () => ({
+  createSupabaseServiceRoleClient: jest.fn(),
+}))
+
+import { createSupabaseServiceRoleClient } from '@/lib/supabase-server'
+
+const createSupabaseServiceRoleClientMock = createSupabaseServiceRoleClient as jest.Mock
 
 const match: UpcomingMatch = {
   match_id: 'match-1',
@@ -79,5 +88,34 @@ describe('resolveTeamMatchPredictionAuditRow', () => {
       resolved_at: '2026-05-07T01:00:00.000Z',
       updated_at: '2026-05-07T01:00:00.000Z',
     })
+  })
+})
+
+describe('recordTeamMatchPredictionAudit', () => {
+  afterEach(() => {
+    jest.clearAllMocks()
+  })
+
+  it('stores forecast snapshots through the service-role client', async () => {
+    const upsert = jest.fn().mockResolvedValue({ error: null })
+    const from = jest.fn().mockReturnValue({ upsert })
+    createSupabaseServiceRoleClientMock.mockReturnValue({ from })
+
+    await recordTeamMatchPredictionAudit(match, forecast, {
+      modelVersion: 'team-match-gradient-boosting-v1',
+      predictionSource: 'team_match_classifier',
+      generatedAt: '2026-05-05T12:00:00.000Z',
+    })
+
+    expect(createSupabaseServiceRoleClientMock).toHaveBeenCalledTimes(1)
+    expect(from).toHaveBeenCalledWith('team_match_prediction_audits')
+    expect(upsert).toHaveBeenCalledWith(
+      expect.objectContaining({
+        match_id: 'match-1',
+        model_version: 'team-match-gradient-boosting-v1',
+        favorite_team_id: 'sunrisers_hyderabad',
+      }),
+      { onConflict: 'match_id,model_version,prediction_source' }
+    )
   })
 })
