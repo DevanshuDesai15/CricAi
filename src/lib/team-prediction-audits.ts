@@ -94,6 +94,11 @@ export async function recordTeamMatchPredictionAudit(
     .upsert(row, { onConflict: 'match_id,model_version,prediction_source' })
 
   if (error) throw error
+
+  // Fire-and-forget: resolve any completed match audits that now have a winner
+  resolveTeamMatchPredictionAudits().catch(err =>
+    console.warn('[team-prediction-audits] auto-resolve failed', err)
+  )
 }
 
 export async function resolveTeamMatchPredictionAudits(): Promise<number> {
@@ -134,10 +139,18 @@ export async function resolveTeamMatchPredictionAudits(): Promise<number> {
 
   if (updates.length === 0) return 0
 
-  const { error: updateError } = await supabase
-    .from('team_match_prediction_audits')
-    .upsert(updates)
+  for (const update of updates) {
+    const { error: updateError } = await supabase
+      .from('team_match_prediction_audits')
+      .update({
+        actual_winner: update.actual_winner,
+        was_correct: update.was_correct,
+        resolved_at: update.resolved_at,
+        updated_at: update.updated_at,
+      })
+      .eq('id', update.id)
+    if (updateError) throw updateError
+  }
 
-  if (updateError) throw updateError
   return updates.length
 }
