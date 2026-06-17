@@ -1,9 +1,9 @@
 name: Sync IPL 2026 Data
 
 on:
-  # 11:30 PM IST = 18:00 UTC
-  schedule:
-    - cron: "0 18 * * *"
+  # IPL 2026 season ended — schedule disabled. Re-enable for next season.
+  # schedule:
+  #   - cron: "0 18 * * *"
   # Allow manual trigger from GitHub Actions UI
   workflow_dispatch:
     inputs:

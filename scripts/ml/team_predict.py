@@ -317,11 +317,11 @@ def train_and_evaluate(league_id: str = "ipl"):
     return train_team_model_frame(frame)
 
 
-def save_artifacts(result):
+def save_artifacts(result, version: str = "team-match-gradient-boosting-v1"):
     ARTIFACT_DIR.mkdir(parents=True, exist_ok=True)
     joblib.dump(result["pipeline"], TEAM_MODEL_PATH)
     metadata = {
-        "model_version": "team-match-gradient-boosting-v1",
+        "model_version": version,
         "model_type": "GradientBoostingClassifier",
         "feature_columns": TEAM_MODEL_FEATURES,
         "metrics": result["metrics"],

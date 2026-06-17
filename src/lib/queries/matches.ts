@@ -37,14 +37,16 @@ export async function listRecentMatches(league = 'ipl', limit = 20): Promise<Mat
   return data ?? []
 }
 
-export async function listUpcomingMatches(league = 'ipl', limit = 5): Promise<UpcomingMatch[]> {
+export async function listUpcomingMatches(league = 'ipl', limit = 5, season?: string): Promise<UpcomingMatch[]> {
   const supabase = await createServerSupabaseClient()
   const today = new Date().toISOString().slice(0, 10)
+  const resolvedSeason = season ?? await getLatestIPLSeason()
 
   const { data, error } = await supabase
     .from('matches')
     .select('match_id, match_date, team1_id, team2_id, winner, venue_id, season')
     .eq('league_id', league)
+    .eq('season', resolvedSeason)
     .is('winner', null)
     .gte('match_date', today)
     .not('team1_id', 'is', null)
@@ -56,14 +58,16 @@ export async function listUpcomingMatches(league = 'ipl', limit = 5): Promise<Up
   return (data ?? []) as UpcomingMatch[]
 }
 
-export async function countRemainingMatches(league = 'ipl'): Promise<number> {
+export async function countRemainingMatches(league = 'ipl', season?: string): Promise<number> {
   const supabase = await createServerSupabaseClient()
   const today = new Date().toISOString().slice(0, 10)
+  const resolvedSeason = season ?? await getLatestIPLSeason()
 
   const { count, error } = await supabase
     .from('matches')
     .select('match_id', { count: 'exact', head: true })
     .eq('league_id', league)
+    .eq('season', resolvedSeason)
     .is('winner', null)
     .gte('match_date', today)
     .not('team1_id', 'is', null)
